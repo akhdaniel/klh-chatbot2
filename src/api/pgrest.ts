@@ -1,4 +1,4 @@
-const BASE_URL = 'http://124.156.205.118:3001'
+const BASE_URL = 'https://pgrest.xerpium.com/klh'
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   try {
