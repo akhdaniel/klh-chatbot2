@@ -2,13 +2,10 @@ import { useState, useEffect } from 'react'
 import { ticketsApi } from '../../api/pgrest'
 import type { Ticket } from '../../types'
 import Sidebar from '../../components/Sidebar'
-import IndonesiaMap from './IndonesiaMap'
-import LayerPanel from './LayerPanel'
+import InteractiveMap from './InteractiveMap'
 import StatsPanel from './StatsPanel'
 
 export default function MapView() {
-  const [mapStyle, setMapStyle] = useState<'markers' | 'heatmap' | 'cluster'>('markers')
-  const [timeRange, setTimeRange] = useState('7H')
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -60,9 +57,8 @@ export default function MapView() {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr 320px', flex: 1, minHeight: 0, overflow: 'hidden' }}>
-          <LayerPanel timeRange={timeRange} onTimeRange={setTimeRange} />
-          <IndonesiaMap mapStyle={mapStyle} onStyleChange={setMapStyle} tickets={tickets} />
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+          <InteractiveMap tickets={tickets} />
           <StatsPanel tickets={tickets} />
         </div>
       </div>
