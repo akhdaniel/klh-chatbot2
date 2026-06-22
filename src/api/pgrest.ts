@@ -1,12 +1,5 @@
 const BASE_URL = 'https://bff.xerpium.com'
 
-// Store JWT token in localStorage
-let authToken: string | null = null
-
-if (typeof window !== 'undefined') {
-  authToken = localStorage.getItem('authToken')
-}
-
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   try {
     const headers: Record<string, string> = {
@@ -14,9 +7,10 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
       'Accept': 'application/json',
     }
 
-    // Add JWT token if available
-    if (authToken) {
-      headers['Authorization'] = `Bearer ${authToken}`
+    // Get fresh token from localStorage for each request
+    const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
     }
 
     const res = await fetch(`${BASE_URL}${path}`, {
@@ -42,18 +36,6 @@ export const api = {
     request<T>(path, { method: 'POST', body: JSON.stringify(body) }),
   patch: <T>(path: string, body: unknown) =>
     request<T>(path, { method: 'PATCH', body: JSON.stringify(body) }),
-  setToken: (token: string) => {
-    authToken = token
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('authToken', token)
-    }
-  },
-  clearToken: () => {
-    authToken = null
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('authToken')
-    }
-  },
 }
 
 // Authentication
@@ -139,14 +121,16 @@ export const customersApi = {
 
 // Knowledge Base
 export const knowledgeApi = {
-  upload: (formData: FormData) =>
-    fetch(`${BASE_URL}/api/knowledge/upload`, {
+  upload: (formData: FormData) => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null
+    return fetch(`${BASE_URL}/api/knowledge/upload`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${authToken}`,
+        ...(token && { 'Authorization': `Bearer ${token}` }),
       },
       body: formData,
-    }).then(r => r.json()),
+    }).then(r => r.json())
+  },
 }
 
 // WhatsApp
