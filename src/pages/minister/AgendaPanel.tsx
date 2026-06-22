@@ -306,20 +306,22 @@ function KpiWeightsPanel({ weights, agendas, canManage }: { weights?: MinisterKp
   )
 }
 
+function fmtDateTime(dt: string) {
+  try {
+    const d = new Date(dt)
+    return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) + ' · ' + d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+  } catch { return dt }
+}
+
 function IncomingPanel({ initialItems, canManage }: { initialItems?: MinisterInvitation[]; canManage: boolean }) {
-  const fallback: MinisterInvitation[] = [
-    { id: 1, from: 'Kemenko Marves',  event: 'Rakor Carbon Tax',         date: '3 Juni',           status: 'pending' },
-    { id: 2, from: 'UN Environment',  event: 'High-Level Dialogue',      date: '8 Juni · Nairobi', status: 'pending' },
-    { id: 3, from: 'PT Pertamina',    event: 'Peresmian Green Refinery', date: '12 Juni',           status: 'pending' },
-  ]
-  const [items, setItems] = useState<MinisterInvitation[]>(initialItems && initialItems.length > 0 ? initialItems : fallback)
+  const [items, setItems] = useState<MinisterInvitation[]>(initialItems ?? [])
   const [showAdd, setShowAdd] = useState(false)
-  const [newFrom, setNewFrom] = useState('')
-  const [newEvent, setNewEvent] = useState('')
-  const [newDate, setNewDate] = useState('')
+  const [newFromOrg, setNewFromOrg] = useState('')
+  const [newTitle, setNewTitle] = useState('')
+  const [newDateTime, setNewDateTime] = useState('')
 
   useEffect(() => {
-    if (initialItems && initialItems.length > 0) setItems(initialItems)
+    if (initialItems) setItems(initialItems)
   }, [initialItems])
 
   const STATUS_COLOR: Record<string, string> = {
@@ -332,7 +334,8 @@ function IncomingPanel({ initialItems, canManage }: { initialItems?: MinisterInv
   const handleRespond = async (id: number, action: 'confirm' | 'delegate' | 'decline') => {
     try {
       await ministerApi.respondInvitation(id, action)
-      setItems(prev => prev.map(i => i.id === id ? { ...i, status: action === 'confirm' ? 'confirmed' : action === 'delegate' ? 'delegated' : 'declined' } : i))
+      const next = action === 'confirm' ? 'confirmed' : action === 'delegate' ? 'delegated' : 'declined'
+      setItems(prev => prev.map(i => i.id === id ? { ...i, response: next as MinisterInvitation['response'] } : i))
     } catch (err) { console.error('Respond failed:', err) }
   }
 
@@ -345,11 +348,16 @@ function IncomingPanel({ initialItems, canManage }: { initialItems?: MinisterInv
   }
 
   const handleAdd = async () => {
-    if (!newFrom.trim() || !newEvent.trim()) return
+    if (!newFromOrg.trim() || !newTitle.trim()) return
     try {
-      const created = await ministerApi.createInvitation({ from: newFrom, event: newEvent, date: newDate, status: 'pending' })
+      const created = await ministerApi.createInvitation({
+        from_org: newFromOrg,
+        title: newTitle,
+        date_time: newDateTime ? new Date(newDateTime).toISOString() : new Date().toISOString(),
+        response: 'pending',
+      })
       setItems(prev => [...prev, created as MinisterInvitation])
-      setNewFrom(''); setNewEvent(''); setNewDate(''); setShowAdd(false)
+      setNewFromOrg(''); setNewTitle(''); setNewDateTime(''); setShowAdd(false)
     } catch (err) { console.error('Create failed:', err) }
   }
 
@@ -368,9 +376,9 @@ function IncomingPanel({ initialItems, canManage }: { initialItems?: MinisterInv
 
       {showAdd && canManage && (
         <div style={{ marginBottom: 14, padding: '10px 12px', background: 'var(--paper)', borderRadius: 4, border: '1px solid var(--line)' }}>
-          <input style={s} placeholder="Dari (org/lembaga)" value={newFrom} onChange={e => setNewFrom(e.target.value)} />
-          <input style={s} placeholder="Nama acara" value={newEvent} onChange={e => setNewEvent(e.target.value)} />
-          <input style={s} placeholder="Tanggal (misal: 3 Juni)" value={newDate} onChange={e => setNewDate(e.target.value)} />
+          <input style={s} placeholder="Dari (org/lembaga)" value={newFromOrg} onChange={e => setNewFromOrg(e.target.value)} />
+          <input style={s} placeholder="Nama acara / judul undangan" value={newTitle} onChange={e => setNewTitle(e.target.value)} />
+          <input type="datetime-local" style={s} value={newDateTime} onChange={e => setNewDateTime(e.target.value)} />
           <div style={{ display: 'flex', gap: 6 }}>
             <button onClick={handleAdd} style={{ fontSize: 10, padding: '5px 10px', background: 'var(--leaf-deep)', color: 'white', border: 'none', borderRadius: 3, cursor: 'pointer', fontWeight: 600 }}>Simpan</button>
             <button onClick={() => setShowAdd(false)} style={{ fontSize: 10, padding: '5px 10px', background: 'white', color: 'var(--bark)', border: '1px solid var(--line)', borderRadius: 3, cursor: 'pointer' }}>Batal</button>
@@ -378,33 +386,38 @@ function IncomingPanel({ initialItems, canManage }: { initialItems?: MinisterInv
         </div>
       )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {items.map(item => (
-          <div key={item.id} style={{ paddingBottom: 12, borderBottom: '1px dashed var(--line)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', marginBottom: 2 }}>{item.from}</div>
-                <div style={{ fontSize: 12, color: 'var(--bark-soft)' }}>{item.event} · {item.date}</div>
-                {item.status && item.status !== 'pending' && (
-                  <div style={{ fontSize: 10, color: STATUS_COLOR[item.status] || 'var(--bark-soft)', marginTop: 4, fontWeight: 600, fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-                    {STATUS_LABEL[item.status] || item.status}
-                  </div>
+      {items.length === 0 ? (
+        <div style={{ fontSize: 12, color: 'var(--bark-soft)', textAlign: 'center', padding: '12px 0' }}>Belum ada undangan</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {items.map(item => (
+            <div key={item.id} style={{ paddingBottom: 12, borderBottom: '1px dashed var(--line)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', marginBottom: 2 }}>{item.from_org}</div>
+                  <div style={{ fontSize: 12, color: 'var(--bark-soft)' }}>{item.title} · {fmtDateTime(item.date_time)}</div>
+                  {item.location && <div style={{ fontSize: 11, color: 'var(--bark-soft)', marginTop: 2 }}>📍 {item.location}</div>}
+                  {item.response && item.response !== 'pending' && (
+                    <div style={{ fontSize: 10, color: STATUS_COLOR[item.response] || 'var(--bark-soft)', marginTop: 4, fontWeight: 600, fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                      {STATUS_LABEL[item.response] || item.response}
+                    </div>
+                  )}
+                </div>
+                {canManage && (
+                  <button onClick={() => handleDelete(item.id)} style={{ fontSize: 10, padding: '2px 6px', background: 'white', color: 'var(--clay)', border: '1px solid var(--clay)', borderRadius: 3, cursor: 'pointer', flexShrink: 0 }}>✕</button>
                 )}
               </div>
-              {canManage && (
-                <button onClick={() => handleDelete(item.id)} style={{ fontSize: 10, padding: '2px 6px', background: 'white', color: 'var(--clay)', border: '1px solid var(--clay)', borderRadius: 3, cursor: 'pointer', flexShrink: 0 }}>✕</button>
+              {canManage && (!item.response || item.response === 'pending') && (
+                <div style={{ display: 'flex', gap: 5, marginTop: 8 }}>
+                  <button onClick={() => handleRespond(item.id, 'confirm')} style={{ fontSize: 9, padding: '3px 8px', background: 'var(--leaf-deep)', color: 'white', border: 'none', borderRadius: 3, cursor: 'pointer', fontWeight: 600, fontFamily: 'JetBrains Mono, monospace' }}>Konfirmasi</button>
+                  <button onClick={() => handleRespond(item.id, 'delegate')} style={{ fontSize: 9, padding: '3px 8px', background: 'var(--sun)', color: 'var(--ink)', border: 'none', borderRadius: 3, cursor: 'pointer', fontWeight: 600, fontFamily: 'JetBrains Mono, monospace' }}>Delegasi</button>
+                  <button onClick={() => handleRespond(item.id, 'decline')} style={{ fontSize: 9, padding: '3px 8px', background: 'white', color: 'var(--clay)', border: '1px solid var(--clay)', borderRadius: 3, cursor: 'pointer', fontWeight: 600, fontFamily: 'JetBrains Mono, monospace' }}>Tolak</button>
+                </div>
               )}
             </div>
-            {canManage && item.status === 'pending' && (
-              <div style={{ display: 'flex', gap: 5, marginTop: 8 }}>
-                <button onClick={() => handleRespond(item.id, 'confirm')} style={{ fontSize: 9, padding: '3px 8px', background: 'var(--leaf-deep)', color: 'white', border: 'none', borderRadius: 3, cursor: 'pointer', fontWeight: 600, fontFamily: 'JetBrains Mono, monospace' }}>Konfirmasi</button>
-                <button onClick={() => handleRespond(item.id, 'delegate')} style={{ fontSize: 9, padding: '3px 8px', background: 'var(--sun)', color: 'var(--ink)', border: 'none', borderRadius: 3, cursor: 'pointer', fontWeight: 600, fontFamily: 'JetBrains Mono, monospace' }}>Delegasi</button>
-                <button onClick={() => handleRespond(item.id, 'decline')} style={{ fontSize: 9, padding: '3px 8px', background: 'white', color: 'var(--clay)', border: '1px solid var(--clay)', borderRadius: 3, cursor: 'pointer', fontWeight: 600, fontFamily: 'JetBrains Mono, monospace' }}>Tolak</button>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

@@ -234,11 +234,16 @@ export interface MinisterLink {
 
 export interface MinisterInvitation {
   id: number
-  from: string
-  event: string
-  date: string
-  status?: 'pending' | 'confirmed' | 'delegated' | 'declined'
-  delegate_to?: string
+  from_org: string
+  title: string
+  date_time: string
+  location?: string | null
+  urgency?: string
+  response?: 'pending' | 'confirmed' | 'delegated' | 'declined'
+  delegation_to?: string | null
+  notes?: string | null
+  description?: string | null
+  created_at?: string
 }
 
 export interface MinisterRecommendation {
