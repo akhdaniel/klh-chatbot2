@@ -307,13 +307,9 @@ function KpiWeightsPanel({ weights, agendas, canManage }: { weights?: MinisterKp
 }
 
 function fmtDateTime(dt: string) {
-  try {
-    // Handle "2026-06-22 06:00" (space-separated, no timezone) and ISO strings
-    const normalized = dt.replace(' ', 'T')
-    const d = new Date(normalized)
-    if (isNaN(d.getTime())) return dt
-    return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) + ' · ' + d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
-  } catch { return dt }
+  const d = new Date(dt)
+  if (isNaN(d.getTime())) return dt
+  return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) + ' · ' + d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
 }
 
 function IncomingPanel({ initialItems, canManage }: { initialItems?: MinisterInvitation[]; canManage: boolean }) {
