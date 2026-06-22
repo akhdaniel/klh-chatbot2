@@ -16,7 +16,7 @@ export default function AgendaModal({ isOpen, agenda, onClose, onSave, loading }
   const [endDate, setEndDate] = useState(agenda?.end_date || '')
   const [location, setLocation] = useState(agenda?.location || '')
   const [status, setStatus] = useState(agenda?.status || 'planned')
-  const [category, setCategory] = useState(agenda?.category || 'pertemuan')
+  const [category, setCategory] = useState(agenda?.category || 'kenegaraan')
   const [error, setError] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -139,10 +139,12 @@ export default function AgendaModal({ isOpen, agenda, onClose, onSave, loading }
                 onChange={(e) => setCategory(e.target.value as any)}
                 style={{ width: '100%', padding: '10px 12px', fontSize: 14, border: '1px solid var(--line)', borderRadius: 6 }}
               >
-                <option value="pertemuan">Pertemuan</option>
-                <option value="kunjungan">Kunjungan</option>
-                <option value="seminar">Seminar</option>
-                <option value="lainnya">Lainnya</option>
+                <option value="kenegaraan">Kenegaraan</option>
+                <option value="internasional">Internasional</option>
+                <option value="koordinasi">Koordinasi</option>
+                <option value="publik">Publik</option>
+                <option value="protokoler">Protokoler</option>
+                <option value="internal">Internal</option>
               </select>
             </div>
             <div>
@@ -153,7 +155,7 @@ export default function AgendaModal({ isOpen, agenda, onClose, onSave, loading }
                 style={{ width: '100%', padding: '10px 12px', fontSize: 14, border: '1px solid var(--line)', borderRadius: 6 }}
               >
                 <option value="planned">Direncanakan</option>
-                <option value="ongoing">Sedang Berlangsung</option>
+                <option value="confirmed">Dikonfirmasi</option>
                 <option value="completed">Selesai</option>
                 <option value="cancelled">Batal</option>
               </select>

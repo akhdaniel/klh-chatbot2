@@ -5,8 +5,8 @@ export interface Agenda {
   start_date: string
   end_date?: string
   location?: string
-  status: 'planned' | 'ongoing' | 'completed' | 'cancelled'
-  category?: 'pertemuan' | 'kunjungan' | 'seminar' | 'lainnya'
+  status: 'planned' | 'confirmed' | 'completed' | 'cancelled'
+  category?: 'kenegaraan' | 'internasional' | 'koordinasi' | 'publik' | 'protokoler' | 'internal'
   created_by?: string | number
   created_at: string
   updated_at?: string

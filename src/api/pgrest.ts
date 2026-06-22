@@ -152,23 +152,40 @@ export const whatsappApi = {
 // Minister Agenda & Achievements
 export const ministerApi = {
   // Agenda endpoints
-  getAgendas: (params?: { status?: string; limit?: number; page?: number }) => {
+  getAgendas: (params?: {
+    date?: string
+    status?: 'planned' | 'confirmed' | 'completed' | 'cancelled'
+    category?: 'kenegaraan' | 'internasional' | 'koordinasi' | 'publik' | 'protokoler' | 'internal'
+    page?: number
+    limit?: number
+  }) => {
     const qs = params ? '?' + new URLSearchParams(
       Object.entries(params).map(([k, v]) => [k, String(v)])
     ).toString() : ''
     return api.get<{
-      data: any[]
+      data: Agenda[]
       page: number
       limit: number
       total: number
-    } | any[]>(`/api/minister/agendas${qs}`)
+    } | Agenda[]>(`/api/minister/agendas${qs}`)
   },
-  createAgenda: (data: any) =>
-    api.post('/api/minister/agendas', data),
-  updateAgenda: (id: string | number, data: Partial<any>) =>
-    api.patch(`/api/minister/agendas/${id}`, data),
-  deleteAgenda: (id: string | number) =>
-    api.patch(`/api/minister/agendas/${id}`, { status: 'cancelled' }),
+
+  createAgenda: (data: Partial<Agenda>) =>
+    api.post<Agenda>('/api/minister/agendas', data),
+
+  updateAgenda: (id: string | number, data: Partial<Agenda>) =>
+    api.patch<Agenda>(`/api/minister/agendas/${id}`, data),
+
+  deleteAgenda: (id: string | number) => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null
+    return fetch(`${BASE_URL}/api/minister/agendas/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { 'Authorization': `Bearer ${token}` }),
+      },
+    }).then(r => r.json())
+  },
 
   // Achievements endpoints
   getAchievements: (params?: { limit?: number; page?: number }) => {
@@ -176,18 +193,29 @@ export const ministerApi = {
       Object.entries(params).map(([k, v]) => [k, String(v)])
     ).toString() : ''
     return api.get<{
-      data: any[]
+      data: Achievement[]
       page: number
       limit: number
       total: number
-    } | any[]>(`/api/minister/achievements${qs}`)
+    } | Achievement[]>(`/api/minister/achievements${qs}`)
   },
-  createAchievement: (data: any) =>
-    api.post('/api/minister/achievements', data),
-  updateAchievement: (id: string | number, data: Partial<any>) =>
-    api.patch(`/api/minister/achievements/${id}`, data),
-  deleteAchievement: (id: string | number) =>
-    api.patch(`/api/minister/achievements/${id}`, { deleted_at: new Date().toISOString() }),
+
+  createAchievement: (data: Partial<Achievement>) =>
+    api.post<Achievement>('/api/minister/achievements', data),
+
+  updateAchievement: (id: string | number, data: Partial<Achievement>) =>
+    api.patch<Achievement>(`/api/minister/achievements/${id}`, data),
+
+  deleteAchievement: (id: string | number) => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null
+    return fetch(`${BASE_URL}/api/minister/achievements/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { 'Authorization': `Bearer ${token}` }),
+      },
+    }).then(r => r.json())
+  },
 }
 
 // Types are imported from types/index.ts

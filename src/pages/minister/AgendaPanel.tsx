@@ -5,10 +5,10 @@ import type { Agenda } from '../../types/agenda'
 import AgendaModal from '../../components/AgendaModal'
 
 const BORDER_COLOR: Record<string, string> = {
-  critical: 'var(--clay)',
-  high: 'var(--sun)',
-  medium: 'var(--leaf-mid)',
-  low: 'var(--line)',
+  planned: 'var(--line)',
+  confirmed: 'var(--sun)',
+  completed: 'var(--leaf-mid)',
+  cancelled: 'var(--clay)',
 }
 
 export default function AgendaPanel() {
@@ -53,9 +53,8 @@ export default function AgendaPanel() {
       await fetchAgendas()
       setEditingAgenda(undefined)
     } catch (err) {
-      throw err
-    } finally {
       setSaving(false)
+      throw err
     }
   }
 
@@ -66,6 +65,7 @@ export default function AgendaPanel() {
       await fetchAgendas()
     } catch (err) {
       console.error('Failed to delete agenda:', err)
+      alert('Gagal menghapus agenda')
     }
   }
 
@@ -168,7 +168,12 @@ export default function AgendaPanel() {
                       </span>
                     )}
                     <span style={{ textTransform: 'capitalize' }}>
-                      Status: <strong style={{ color: 'var(--ink)' }}>{agenda.status}</strong>
+                      Status: <strong style={{ color: 'var(--ink)' }}>
+                        {agenda.status === 'confirmed' ? 'Dikonfirmasi' :
+                         agenda.status === 'completed' ? 'Selesai' :
+                         agenda.status === 'cancelled' ? 'Batal' :
+                         'Direncanakan'}
+                      </strong>
                     </span>
                   </div>
                 </div>
@@ -260,9 +265,9 @@ export default function AgendaPanel() {
               </span>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
-              <span style={{ fontSize: 12, color: 'var(--bark-soft)' }}>Sedang berlangsung</span>
+              <span style={{ fontSize: 12, color: 'var(--bark-soft)' }}>Dikonfirmasi</span>
               <span style={{ fontWeight: 600, color: 'var(--ink)' }}>
-                {agendas.filter((a) => a.status === 'ongoing').length}
+                {agendas.filter((a) => a.status === 'confirmed').length}
               </span>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
