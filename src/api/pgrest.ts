@@ -149,73 +149,69 @@ export const whatsappApi = {
     api.post('/api/whatsapp/receive', data),
 }
 
-// Minister Agenda & Achievements
+function del(path: string) {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null
+  return fetch(`${BASE_URL}${path}`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', ...(token && { Authorization: `Bearer ${token}` }) },
+  }).then(r => (r.status === 204 ? {} : r.json()))
+}
+
+// Minister dashboard CRUD
 export const ministerApi = {
-  // Agenda endpoints
+  // ── Agendas ────────────────────────────────────────────────────────────────
   getAgendas: (params?: {
     date?: string
-    status?: 'planned' | 'confirmed' | 'completed' | 'cancelled'
-    category?: 'kenegaraan' | 'internasional' | 'koordinasi' | 'publik' | 'protokoler' | 'internal'
+    status?: string
+    category?: string
     page?: number
     limit?: number
   }) => {
-    const qs = params ? '?' + new URLSearchParams(
-      Object.entries(params).map(([k, v]) => [k, String(v)])
-    ).toString() : ''
-    return api.get<{
-      data: Agenda[]
-      page: number
-      limit: number
-      total: number
-    } | Agenda[]>(`/api/minister/agendas${qs}`)
+    const qs = params ? '?' + new URLSearchParams(Object.entries(params).map(([k, v]) => [k, String(v)])).toString() : ''
+    return api.get<any>(`/api/minister/agendas${qs}`)
   },
+  createAgenda:  (data: Partial<Agenda>) => api.post<Agenda>('/api/minister/agendas', data),
+  updateAgenda:  (id: string | number, data: Partial<Agenda>) => api.patch<Agenda>(`/api/minister/agendas/${id}`, data),
+  deleteAgenda:  (id: string | number) => del(`/api/minister/agendas/${id}`),
 
-  createAgenda: (data: Partial<Agenda>) =>
-    api.post<Agenda>('/api/minister/agendas', data),
-
-  updateAgenda: (id: string | number, data: Partial<Agenda>) =>
-    api.patch<Agenda>(`/api/minister/agendas/${id}`, data),
-
-  deleteAgenda: (id: string | number) => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null
-    return fetch(`${BASE_URL}/api/minister/agendas/${id}`, {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token && { 'Authorization': `Bearer ${token}` }),
-      },
-    }).then(r => r.json())
+  // ── Links (Tautan Berita / Press / Dokumen) ────────────────────────────────
+  getLinks: (params?: { type?: string; limit?: number }) => {
+    const qs = params ? '?' + new URLSearchParams(Object.entries(params).map(([k, v]) => [k, String(v)])).toString() : ''
+    return api.get<any>(`/api/minister/links${qs}`)
   },
+  createLink:  (data: Partial<MinisterLink>) => api.post<MinisterLink>('/api/minister/links', data),
+  updateLink:  (id: number, data: Partial<MinisterLink>) => api.patch<MinisterLink>(`/api/minister/links/${id}`, data),
+  deleteLink:  (id: number) => del(`/api/minister/links/${id}`),
 
-  // Achievements endpoints
+  // ── Invitations (Undangan Masuk) ───────────────────────────────────────────
+  getInvitations: (params?: { date?: string; limit?: number }) => {
+    const qs = params ? '?' + new URLSearchParams(Object.entries(params).map(([k, v]) => [k, String(v)])).toString() : ''
+    return api.get<any>(`/api/minister/invitations${qs}`)
+  },
+  createInvitation:  (data: Partial<MinisterInvitation>) => api.post<MinisterInvitation>('/api/minister/invitations', data),
+  respondInvitation: (id: number, action: 'confirm' | 'delegate' | 'decline', delegate_to?: string) =>
+    api.patch<MinisterInvitation>(`/api/minister/invitations/${id}/respond`, { action, delegate_to }),
+  deleteInvitation:  (id: number) => del(`/api/minister/invitations/${id}`),
+
+  // ── Recommendations (AI Analisis) ─────────────────────────────────────────
+  getRecommendations: () => api.get<any>('/api/minister/recommendations'),
+  createRecommendation: (data: Partial<MinisterRecommendation>) =>
+    api.post<MinisterRecommendation>('/api/minister/recommendations', data),
+  deleteRecommendation: (id: number) => del(`/api/minister/recommendations/${id}`),
+
+  // ── KPI Weights ────────────────────────────────────────────────────────────
+  getKpiWeights: () => api.get<MinisterKpiWeight[]>('/api/minister/kpi-weights'),
+  updateKpiWeight: (category: string, weight: number) =>
+    api.patch<MinisterKpiWeight>(`/api/minister/kpi-weights/${category}`, { weight }),
+
+  // ── Achievements ───────────────────────────────────────────────────────────
   getAchievements: (params?: { limit?: number; page?: number }) => {
-    const qs = params ? '?' + new URLSearchParams(
-      Object.entries(params).map(([k, v]) => [k, String(v)])
-    ).toString() : ''
-    return api.get<{
-      data: Achievement[]
-      page: number
-      limit: number
-      total: number
-    } | Achievement[]>(`/api/minister/achievements${qs}`)
+    const qs = params ? '?' + new URLSearchParams(Object.entries(params).map(([k, v]) => [k, String(v)])).toString() : ''
+    return api.get<any>(`/api/minister/achievements${qs}`)
   },
-
-  createAchievement: (data: Partial<Achievement>) =>
-    api.post<Achievement>('/api/minister/achievements', data),
-
-  updateAchievement: (id: string | number, data: Partial<Achievement>) =>
-    api.patch<Achievement>(`/api/minister/achievements/${id}`, data),
-
-  deleteAchievement: (id: string | number) => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null
-    return fetch(`${BASE_URL}/api/minister/achievements/${id}`, {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token && { 'Authorization': `Bearer ${token}` }),
-      },
-    }).then(r => r.json())
-  },
+  createAchievement:  (data: Partial<Achievement>) => api.post<Achievement>('/api/minister/achievements', data),
+  updateAchievement:  (id: string | number, data: Partial<Achievement>) => api.patch<Achievement>(`/api/minister/achievements/${id}`, data),
+  deleteAchievement:  (id: string | number) => del(`/api/minister/achievements/${id}`),
 }
 
 // Types are imported from types/index.ts
@@ -225,6 +221,39 @@ import type {
   DailyStats, TicketSummary, ProvinceCount, CategoryStats
 } from '../types'
 import type { Agenda, Achievement, MinisterProfileUpdate } from '../types/agenda'
+
+export interface MinisterLink {
+  id: number
+  type: 'berita' | 'press_release' | 'dokumen'
+  title: string
+  url: string
+  source?: string
+  published_at?: string
+  is_featured?: boolean
+}
+
+export interface MinisterInvitation {
+  id: number
+  from: string
+  event: string
+  date: string
+  status?: 'pending' | 'confirmed' | 'delegated' | 'declined'
+  delegate_to?: string
+}
+
+export interface MinisterRecommendation {
+  id: number
+  type: 'attend' | 'delegate'
+  agenda_id?: number
+  title: string
+  reason: string
+  delegate_to?: string
+}
+
+export interface MinisterKpiWeight {
+  category: string
+  weight: number
+}
 
 export type {
   User, Customer, Category, Ticket, TicketHistory,

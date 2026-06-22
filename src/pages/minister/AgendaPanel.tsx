@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { ministerApi } from '../../api/pgrest'
+import type { MinisterLink, MinisterInvitation, MinisterKpiWeight } from '../../api/pgrest'
 import type { Agenda } from '../../types/agenda'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -19,28 +20,6 @@ interface CategoryCount {
   count: number
 }
 
-interface KpiWeight {
-  category: string
-  weight: number
-}
-
-interface MinisterLink {
-  id: number
-  type: 'berita' | 'press_release' | 'dokumen'
-  title: string
-  url: string
-  source?: string
-  published_at?: string
-  is_featured?: boolean
-}
-
-interface IncomingInvite {
-  id: number
-  from: string
-  event: string
-  date: string
-}
-
 interface AgendaResponse {
   data: Agenda[]
   ai_analysis?: AiAnalysis
@@ -48,10 +27,10 @@ interface AgendaResponse {
     total?: number
     confirmed?: number
     category_counts?: CategoryCount[]
-    kpi_weights?: KpiWeight[]
+    kpi_weights?: MinisterKpiWeight[]
   }
   links?: MinisterLink[]
-  incoming_today?: IncomingInvite[]
+  incoming_today?: MinisterInvitation[]
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -253,64 +232,176 @@ function CategoryStatsPanel({ counts, agendas }: { counts?: CategoryCount[]; age
   )
 }
 
-function KpiWeightsPanel({ weights, agendas }: { weights?: KpiWeight[]; agendas: Agenda[] }) {
-  // Fallback: compute avg from kpi agendas if BFF doesn't send stats.kpi_weights yet
-  const resolvedWeights: Record<string, number> = {}
-  if (weights && weights.length > 0) {
-    weights.forEach(w => { resolvedWeights[w.category] = w.weight })
-  } else {
+function KpiWeightsPanel({ weights, agendas, canManage }: { weights?: MinisterKpiWeight[]; agendas: Agenda[]; canManage: boolean }) {
+  const defaults: Record<string, number> = { kenegaraan: 95, internasional: 90, publik: 80, koordinasi: 70, protokoler: 55, internal: 30 }
+  const init: Record<string, number> = { ...defaults }
+  if (weights && weights.length > 0) weights.forEach(w => { init[w.category] = w.weight })
+  else {
     const catScores: Record<string, number[]> = {}
-    agendas.forEach(a => {
-      if (a.is_kpi && a.kpi_score) {
-        if (!catScores[a.category]) catScores[a.category] = []
-        catScores[a.category].push(a.kpi_score)
-      }
-    })
-    // Default weights if no data
-    const defaults: Record<string, number> = { kenegaraan: 95, internasional: 90, publik: 80, koordinasi: 70, protokoler: 55, internal: 30 }
-    Object.entries(defaults).forEach(([k, v]) => {
-      const scores = catScores[k]
-      resolvedWeights[k] = scores?.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : v
-    })
+    agendas.forEach(a => { if (a.is_kpi && a.kpi_score) { if (!catScores[a.category]) catScores[a.category] = []; catScores[a.category].push(a.kpi_score) } })
+    Object.entries(catScores).forEach(([k, scores]) => { init[k] = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) })
+  }
+
+  const [editing, setEditing] = useState(false)
+  const [values, setValues] = useState<Record<string, number>>(init)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    if (weights && weights.length > 0) {
+      const next = { ...defaults }
+      weights.forEach(w => { next[w.category] = w.weight })
+      setValues(next)
+    }
+  }, [weights])
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      await Promise.all(
+        Object.entries(values).map(([cat, w]) => ministerApi.updateKpiWeight(cat, w))
+      )
+      setEditing(false)
+    } catch (err) { console.error('Save KPI weights failed:', err) }
+    finally { setSaving(false) }
   }
 
   return (
     <div style={{ background: 'white', border: '1px solid var(--line)', borderRadius: 6, padding: '16px 18px', marginBottom: 16 }}>
-      <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, letterSpacing: '0.2em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--bark-soft)', marginBottom: 14 }}>
-        Bobot KPI per Kategori
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+        <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, letterSpacing: '0.2em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--bark-soft)' }}>
+          Bobot KPI per Kategori
+        </div>
+        {canManage && !editing && (
+          <button onClick={() => setEditing(true)} style={{ fontSize: 10, padding: '3px 8px', background: 'white', color: 'var(--leaf-deep)', border: '1px solid var(--leaf-mid)', borderRadius: 3, cursor: 'pointer' }}>Edit</button>
+        )}
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {Object.entries(CATEGORY_META).map(([key, cat]) => (
           <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: 12, color: 'var(--ink)' }}>{cat.label}</span>
-            <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 12, fontWeight: 700, color: 'var(--clay)' }}>
-              {resolvedWeights[key] ?? '—'} <span style={{ color: 'var(--bark-soft)', fontWeight: 400 }}>/ 100</span>
-            </span>
+            {editing ? (
+              <input
+                type="number" min="0" max="100"
+                value={values[key] ?? 0}
+                onChange={e => setValues(prev => ({ ...prev, [key]: Number(e.target.value) }))}
+                style={{ width: 56, padding: '3px 6px', fontSize: 12, border: '1px solid var(--line)', borderRadius: 3, textAlign: 'right', fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: 'var(--clay)' }}
+              />
+            ) : (
+              <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 12, fontWeight: 700, color: 'var(--clay)' }}>
+                {values[key] ?? '—'} <span style={{ color: 'var(--bark-soft)', fontWeight: 400 }}>/ 100</span>
+              </span>
+            )}
           </div>
         ))}
       </div>
+      {editing && (
+        <div style={{ display: 'flex', gap: 6, marginTop: 14, paddingTop: 10, borderTop: '1px solid var(--line)' }}>
+          <button onClick={handleSave} disabled={saving} style={{ fontSize: 10, padding: '5px 12px', background: 'var(--leaf-deep)', color: 'white', border: 'none', borderRadius: 3, cursor: 'pointer', fontWeight: 600 }}>
+            {saving ? 'Menyimpan...' : 'Simpan'}
+          </button>
+          <button onClick={() => setEditing(false)} style={{ fontSize: 10, padding: '5px 10px', background: 'white', color: 'var(--bark)', border: '1px solid var(--line)', borderRadius: 3, cursor: 'pointer' }}>Batal</button>
+        </div>
+      )}
     </div>
   )
 }
 
-function IncomingPanel({ incoming }: { incoming?: IncomingInvite[] }) {
-  const fallback: IncomingInvite[] = [
-    { id: 1, from: 'Kemenko Marves',  event: 'Rakor Carbon Tax',        date: '3 Juni' },
-    { id: 2, from: 'UN Environment',  event: 'High-Level Dialogue',     date: '8 Juni · Nairobi' },
-    { id: 3, from: 'PT Pertamina',    event: 'Peresmian Green Refinery', date: '12 Juni' },
+function IncomingPanel({ initialItems, canManage }: { initialItems?: MinisterInvitation[]; canManage: boolean }) {
+  const fallback: MinisterInvitation[] = [
+    { id: 1, from: 'Kemenko Marves',  event: 'Rakor Carbon Tax',         date: '3 Juni',           status: 'pending' },
+    { id: 2, from: 'UN Environment',  event: 'High-Level Dialogue',      date: '8 Juni · Nairobi', status: 'pending' },
+    { id: 3, from: 'PT Pertamina',    event: 'Peresmian Green Refinery', date: '12 Juni',           status: 'pending' },
   ]
-  const items = incoming && incoming.length > 0 ? incoming : fallback
+  const [items, setItems] = useState<MinisterInvitation[]>(initialItems && initialItems.length > 0 ? initialItems : fallback)
+  const [showAdd, setShowAdd] = useState(false)
+  const [newFrom, setNewFrom] = useState('')
+  const [newEvent, setNewEvent] = useState('')
+  const [newDate, setNewDate] = useState('')
+
+  useEffect(() => {
+    if (initialItems && initialItems.length > 0) setItems(initialItems)
+  }, [initialItems])
+
+  const STATUS_COLOR: Record<string, string> = {
+    pending: 'var(--bark-soft)', confirmed: 'var(--leaf-deep)', delegated: 'var(--sun)', declined: 'var(--clay)',
+  }
+  const STATUS_LABEL: Record<string, string> = {
+    pending: 'Menunggu', confirmed: 'Dikonfirmasi', delegated: 'Didelegasi', declined: 'Ditolak',
+  }
+
+  const handleRespond = async (id: number, action: 'confirm' | 'delegate' | 'decline') => {
+    try {
+      await ministerApi.respondInvitation(id, action)
+      setItems(prev => prev.map(i => i.id === id ? { ...i, status: action === 'confirm' ? 'confirmed' : action === 'delegate' ? 'delegated' : 'declined' } : i))
+    } catch (err) { console.error('Respond failed:', err) }
+  }
+
+  const handleDelete = async (id: number) => {
+    if (!confirm('Hapus undangan ini?')) return
+    try {
+      await ministerApi.deleteInvitation(id)
+      setItems(prev => prev.filter(i => i.id !== id))
+    } catch (err) { console.error('Delete failed:', err) }
+  }
+
+  const handleAdd = async () => {
+    if (!newFrom.trim() || !newEvent.trim()) return
+    try {
+      const created = await ministerApi.createInvitation({ from: newFrom, event: newEvent, date: newDate, status: 'pending' })
+      setItems(prev => [...prev, created as MinisterInvitation])
+      setNewFrom(''); setNewEvent(''); setNewDate(''); setShowAdd(false)
+    } catch (err) { console.error('Create failed:', err) }
+  }
+
+  const s = { width: '100%', padding: '6px 8px', fontSize: 12, border: '1px solid var(--line)', borderRadius: 4, fontFamily: 'inherit', boxSizing: 'border-box' as const, marginBottom: 6 }
 
   return (
     <div style={{ background: 'white', border: '1px solid var(--line)', borderRadius: 6, padding: '16px 18px', marginBottom: 16 }}>
-      <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, letterSpacing: '0.2em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--bark-soft)', marginBottom: 14 }}>
-        Undangan Masuk · Hari Ini
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+        <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, letterSpacing: '0.2em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--bark-soft)' }}>
+          Undangan Masuk · Hari Ini
+        </div>
+        {canManage && (
+          <button onClick={() => setShowAdd(v => !v)} style={{ fontSize: 10, padding: '3px 8px', background: 'var(--leaf-deep)', color: 'white', border: 'none', borderRadius: 3, cursor: 'pointer' }}>+</button>
+        )}
       </div>
+
+      {showAdd && canManage && (
+        <div style={{ marginBottom: 14, padding: '10px 12px', background: 'var(--paper)', borderRadius: 4, border: '1px solid var(--line)' }}>
+          <input style={s} placeholder="Dari (org/lembaga)" value={newFrom} onChange={e => setNewFrom(e.target.value)} />
+          <input style={s} placeholder="Nama acara" value={newEvent} onChange={e => setNewEvent(e.target.value)} />
+          <input style={s} placeholder="Tanggal (misal: 3 Juni)" value={newDate} onChange={e => setNewDate(e.target.value)} />
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button onClick={handleAdd} style={{ fontSize: 10, padding: '5px 10px', background: 'var(--leaf-deep)', color: 'white', border: 'none', borderRadius: 3, cursor: 'pointer', fontWeight: 600 }}>Simpan</button>
+            <button onClick={() => setShowAdd(false)} style={{ fontSize: 10, padding: '5px 10px', background: 'white', color: 'var(--bark)', border: '1px solid var(--line)', borderRadius: 3, cursor: 'pointer' }}>Batal</button>
+          </div>
+        </div>
+      )}
+
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {items.map(item => (
           <div key={item.id} style={{ paddingBottom: 12, borderBottom: '1px dashed var(--line)' }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', marginBottom: 2 }}>{item.from}</div>
-            <div style={{ fontSize: 12, color: 'var(--bark-soft)' }}>{item.event} · {item.date}</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', marginBottom: 2 }}>{item.from}</div>
+                <div style={{ fontSize: 12, color: 'var(--bark-soft)' }}>{item.event} · {item.date}</div>
+                {item.status && item.status !== 'pending' && (
+                  <div style={{ fontSize: 10, color: STATUS_COLOR[item.status] || 'var(--bark-soft)', marginTop: 4, fontWeight: 600, fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                    {STATUS_LABEL[item.status] || item.status}
+                  </div>
+                )}
+              </div>
+              {canManage && (
+                <button onClick={() => handleDelete(item.id)} style={{ fontSize: 10, padding: '2px 6px', background: 'white', color: 'var(--clay)', border: '1px solid var(--clay)', borderRadius: 3, cursor: 'pointer', flexShrink: 0 }}>✕</button>
+              )}
+            </div>
+            {canManage && item.status === 'pending' && (
+              <div style={{ display: 'flex', gap: 5, marginTop: 8 }}>
+                <button onClick={() => handleRespond(item.id, 'confirm')} style={{ fontSize: 9, padding: '3px 8px', background: 'var(--leaf-deep)', color: 'white', border: 'none', borderRadius: 3, cursor: 'pointer', fontWeight: 600, fontFamily: 'JetBrains Mono, monospace' }}>Konfirmasi</button>
+                <button onClick={() => handleRespond(item.id, 'delegate')} style={{ fontSize: 9, padding: '3px 8px', background: 'var(--sun)', color: 'var(--ink)', border: 'none', borderRadius: 3, cursor: 'pointer', fontWeight: 600, fontFamily: 'JetBrains Mono, monospace' }}>Delegasi</button>
+                <button onClick={() => handleRespond(item.id, 'decline')} style={{ fontSize: 9, padding: '3px 8px', background: 'white', color: 'var(--clay)', border: '1px solid var(--clay)', borderRadius: 3, cursor: 'pointer', fontWeight: 600, fontFamily: 'JetBrains Mono, monospace' }}>Tolak</button>
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -318,17 +409,39 @@ function IncomingPanel({ incoming }: { incoming?: IncomingInvite[] }) {
   )
 }
 
-function NewsLinksSection({ links }: { links?: MinisterLink[] }) {
+function NewsLinksSection({ initialLinks, canManage }: { initialLinks?: MinisterLink[]; canManage: boolean }) {
   const fallback: MinisterLink[] = [
-    { id: 1, type: 'berita',        title: 'Menteri Jumhur tegaskan komitmen Indonesia di COP31 menjelang Belém', url: 'https://www.menlhk.go.id', source: 'Kompas', published_at: '2026-05-24' },
+    { id: 1, type: 'berita',        title: 'Menteri Jumhur tegaskan komitmen Indonesia di COP31 menjelang Belém', url: 'https://www.menlhk.go.id',          source: 'Kompas',     published_at: '2026-05-24' },
     { id: 2, type: 'press_release', title: 'Siaran Pers KLH No. 124/PR/2026 — Capaian 30 Hari Pertama',          url: 'https://www.menlhk.go.id/site/post', source: 'klhk.go.id', published_at: '2026-05-23' },
-    { id: 3, type: 'dokumen',       title: 'Permen LH No. 6/2025 — Baku Mutu Air Limbah (revisi)',                url: 'https://data.menlhk.go.id', source: 'JDIH KLH' },
+    { id: 3, type: 'dokumen',       title: 'Permen LH No. 6/2025 — Baku Mutu Air Limbah (revisi)',                url: 'https://data.menlhk.go.id',          source: 'JDIH KLH' },
   ]
-  const items = links && links.length > 0
-    ? [...links].sort((a, b) => (b.is_featured ? 1 : 0) - (a.is_featured ? 1 : 0))
-    : fallback
+  const [items, setItems] = useState<MinisterLink[]>(initialLinks && initialLinks.length > 0 ? [...initialLinks].sort((a, b) => (b.is_featured ? 1 : 0) - (a.is_featured ? 1 : 0)) : fallback)
+  const [showAdd, setShowAdd] = useState(false)
+  const [form, setForm] = useState({ type: 'berita' as MinisterLink['type'], title: '', url: '', source: '', published_at: '', is_featured: false })
+
+  useEffect(() => {
+    if (initialLinks && initialLinks.length > 0)
+      setItems([...initialLinks].sort((a, b) => (b.is_featured ? 1 : 0) - (a.is_featured ? 1 : 0)))
+  }, [initialLinks])
+
+  const handleDelete = async (id: number) => {
+    if (!confirm('Hapus tautan ini?')) return
+    try { await ministerApi.deleteLink(id); setItems(prev => prev.filter(l => l.id !== id)) }
+    catch (err) { console.error('Delete link failed:', err) }
+  }
+
+  const handleAdd = async () => {
+    if (!form.title.trim() || !form.url.trim()) return
+    try {
+      const created = await ministerApi.createLink(form)
+      setItems(prev => [...prev, created as MinisterLink])
+      setForm({ type: 'berita', title: '', url: '', source: '', published_at: '', is_featured: false })
+      setShowAdd(false)
+    } catch (err) { console.error('Create link failed:', err) }
+  }
 
   const TYPE_LABEL: Record<string, string> = { berita: 'Berita', press_release: 'Press Release', dokumen: 'Regulasi' }
+  const s = { width: '100%', padding: '6px 8px', fontSize: 12, border: '1px solid var(--line)', borderRadius: 4, fontFamily: 'inherit', boxSizing: 'border-box' as const, marginBottom: 6 }
 
   return (
     <div style={{ marginTop: 32, paddingTop: 24, borderTop: '1px solid var(--line)' }}>
@@ -336,19 +449,57 @@ function NewsLinksSection({ links }: { links?: MinisterLink[] }) {
         <h3 style={{ fontFamily: 'Fraunces, serif', fontSize: 20, fontWeight: 500, color: 'var(--ink)', margin: 0 }}>
           Tautan <em style={{ fontStyle: 'italic', color: 'var(--clay)' }}>Berita · Press Release · Dokumen Terkait</em>
         </h3>
-        <span style={{ fontSize: 11, color: 'var(--bark-soft)', fontFamily: 'JetBrains Mono, monospace' }}>Diperbarui otomatis dari sumber resmi</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ fontSize: 11, color: 'var(--bark-soft)', fontFamily: 'JetBrains Mono, monospace' }}>Diperbarui otomatis dari sumber resmi</span>
+          {canManage && (
+            <button onClick={() => setShowAdd(v => !v)} style={{ fontSize: 10, padding: '4px 10px', background: 'var(--leaf-deep)', color: 'white', border: 'none', borderRadius: 3, cursor: 'pointer', fontWeight: 600 }}>+ Tambah</button>
+          )}
+        </div>
       </div>
+
+      {showAdd && canManage && (
+        <div style={{ marginBottom: 16, padding: '16px 18px', background: 'white', border: '1px solid var(--line)', borderRadius: 6 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 6 }}>
+            <div>
+              <label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: 'var(--bark-soft)', marginBottom: 4, fontFamily: 'JetBrains Mono, monospace', textTransform: 'uppercase' }}>Tipe</label>
+              <select style={s} value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value as MinisterLink['type'] }))}>
+                <option value="berita">Berita</option>
+                <option value="press_release">Press Release</option>
+                <option value="dokumen">Dokumen/Regulasi</option>
+              </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: 'var(--bark-soft)', marginBottom: 4, fontFamily: 'JetBrains Mono, monospace', textTransform: 'uppercase' }}>Tanggal Terbit</label>
+              <input type="date" style={s} value={form.published_at} onChange={e => setForm(f => ({ ...f, published_at: e.target.value }))} />
+            </div>
+          </div>
+          <input style={s} placeholder="Judul" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
+          <input style={s} placeholder="URL" value={form.url} onChange={e => setForm(f => ({ ...f, url: e.target.value }))} />
+          <input style={s} placeholder="Sumber (misal: Kompas, JDIH KLH)" value={form.source} onChange={e => setForm(f => ({ ...f, source: e.target.value }))} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+            <input type="checkbox" id="featured" checked={form.is_featured} onChange={e => setForm(f => ({ ...f, is_featured: e.target.checked }))} />
+            <label htmlFor="featured" style={{ fontSize: 12, color: 'var(--ink)', cursor: 'pointer' }}>Tampilkan sebagai unggulan</label>
+          </div>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button onClick={handleAdd} style={{ fontSize: 10, padding: '6px 14px', background: 'var(--leaf-deep)', color: 'white', border: 'none', borderRadius: 3, cursor: 'pointer', fontWeight: 600 }}>Simpan</button>
+            <button onClick={() => setShowAdd(false)} style={{ fontSize: 10, padding: '6px 10px', background: 'white', color: 'var(--bark)', border: '1px solid var(--line)', borderRadius: 3, cursor: 'pointer' }}>Batal</button>
+          </div>
+        </div>
+      )}
+
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
         {items.map(link => (
-          <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer"
-            style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '16px 18px', border: '1px solid var(--line)', borderLeft: `3px solid var(--leaf-mid)`, borderRadius: '0 6px 6px 0', textDecoration: 'none', background: 'white', minHeight: 110 }}
-          >
-            <div>
+          <div key={link.id} style={{ position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '16px 18px', border: '1px solid var(--line)', borderLeft: `3px solid var(--leaf-mid)`, borderRadius: '0 6px 6px 0', background: 'white', minHeight: 110 }}>
+            {canManage && (
+              <button onClick={() => handleDelete(link.id)} style={{ position: 'absolute', top: 8, right: 8, fontSize: 10, padding: '2px 6px', background: 'white', color: 'var(--clay)', border: '1px solid var(--clay)', borderRadius: 3, cursor: 'pointer' }}>✕</button>
+            )}
+            <a href={link.url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', flex: 1 }}>
               <div style={{ fontSize: 9, fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--leaf-deep)', marginBottom: 8 }}>
                 {TYPE_LABEL[link.type] || link.type}
+                {link.is_featured && <span style={{ marginLeft: 6, color: 'var(--sun)' }}>★</span>}
               </div>
               <div style={{ fontSize: 13, color: 'var(--ink)', fontWeight: 500, lineHeight: 1.4 }}>{link.title}</div>
-            </div>
+            </a>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 12 }}>
               <div>
                 {link.source && <span style={{ fontSize: 11, color: 'var(--bark-soft)' }}>{link.source}</span>}
@@ -356,7 +507,7 @@ function NewsLinksSection({ links }: { links?: MinisterLink[] }) {
               </div>
               <span style={{ fontSize: 14, color: 'var(--bark-soft)' }}>↗</span>
             </div>
-          </a>
+          </div>
         ))}
       </div>
     </div>
@@ -467,14 +618,14 @@ export default function AgendaPanel() {
 
         {/* Right sidebar */}
         <div>
-          <IncomingPanel incoming={response.incoming_today} />
+          <IncomingPanel initialItems={response.incoming_today} canManage={canManage} />
           <CategoryStatsPanel counts={stats?.category_counts} agendas={agendas} />
-          <KpiWeightsPanel weights={stats?.kpi_weights} agendas={agendas} />
+          <KpiWeightsPanel weights={stats?.kpi_weights} agendas={agendas} canManage={canManage} />
         </div>
       </div>
 
       {/* Full-width bottom: news/press/docs */}
-      <NewsLinksSection links={response.links} />
+      <NewsLinksSection initialLinks={response.links} canManage={canManage} />
 
       {showForm && canManage && (
         <AgendaFormModal
