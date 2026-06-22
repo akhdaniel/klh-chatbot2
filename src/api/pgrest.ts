@@ -78,23 +78,63 @@ export const dashboardApi = {
 
 // Tickets
 export const ticketsApi = {
+  list: (params?: {
+    status?: 'open' | 'in_progress' | 'resolved' | 'closed'
+    priority?: 'low' | 'medium' | 'high' | 'urgent'
+    page?: number
+    limit?: number
+  }) => {
+    const qs = params ? '?' + new URLSearchParams(
+      Object.entries(params).map(([k, v]) => [k, String(v)])
+    ).toString() : ''
+    return api.get<{
+      data: Ticket[]
+      page: number
+      limit: number
+      total: number
+    }>(`/api/tickets${qs}`)
+  },
   create: (data: { title: string; description: string; category_id?: string }) =>
     api.post<Ticket>('/api/tickets/create', data),
   getStatus: (ticketNumber: string) =>
     api.get<Ticket>(`/api/tickets/status/${ticketNumber}`),
   updateStatus: (ticketId: string, status: string) =>
     api.patch<Ticket>(`/api/tickets/${ticketId}/status`, { status }),
-  // Legacy pgREST methods for compatibility
-  list: (params?: Record<string, string>) => {
-    const qs = params ? '?' + new URLSearchParams(params).toString() : ''
-    return api.get<Ticket[]>(`/tickets${qs}`)
-  },
 }
 
 // Chat
 export const chatApi = {
+  getHistory: (params: {
+    customer_id?: string | number
+    conversation_id?: string | number
+    limit?: number
+  }) => {
+    const qs = '?' + new URLSearchParams(
+      Object.entries(params).map(([k, v]) => [k, String(v)])
+    ).toString()
+    return api.get<Message[]>(`/api/chat/history${qs}`)
+  },
   save: (data: { conversation_id: string; sender_type: string; content: string }) =>
     api.post('/api/chat/save', data),
+}
+
+// Customers
+export const customersApi = {
+  list: (params?: {
+    search?: string
+    page?: number
+    limit?: number
+  }) => {
+    const qs = params ? '?' + new URLSearchParams(
+      Object.entries(params).map(([k, v]) => [k, String(v)])
+    ).toString() : ''
+    return api.get<{
+      data: Customer[]
+      page: number
+      limit: number
+      total: number
+    }>(`/api/customers${qs}`)
+  },
 }
 
 // Knowledge Base

@@ -16,7 +16,8 @@ export default function MapView() {
     const fetchTickets = async () => {
       try {
         setLoading(true)
-        const data = await ticketsApi.list({ order: 'created_at.desc', limit: '100' })
+        const response = await ticketsApi.list({ limit: 100 })
+        const data = Array.isArray(response) ? response : response.data || []
         setTickets(data)
       } catch (err) {
         console.error('Failed to fetch tickets:', err)

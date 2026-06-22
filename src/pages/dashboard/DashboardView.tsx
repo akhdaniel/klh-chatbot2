@@ -30,14 +30,9 @@ export default function DashboardView() {
     const fetchTickets = async () => {
       try {
         setLoading(true)
-        // Try to fetch from BFF, fallback to pgREST if needed
-        let data: any[]
-        try {
-          data = await ticketsApi.list({ limit: '50' })
-        } catch (err) {
-          console.warn('Failed to fetch from BFF, using fallback')
-          data = []
-        }
+        // Fetch from BFF with pagination
+        const response = await ticketsApi.list({ limit: 50 })
+        const data = Array.isArray(response) ? response : response.data || []
         // Transform database tickets to UI format
         const transformed = data.map(t => ({
           id: String(t.id),
