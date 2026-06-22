@@ -34,6 +34,13 @@ interface MinisterLink {
   is_featured?: boolean
 }
 
+interface IncomingInvite {
+  id: number
+  from: string
+  event: string
+  date: string
+}
+
 interface AgendaResponse {
   data: Agenda[]
   ai_analysis?: AiAnalysis
@@ -44,6 +51,7 @@ interface AgendaResponse {
     kpi_weights?: KpiWeight[]
   }
   links?: MinisterLink[]
+  incoming_today?: IncomingInvite[]
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -64,17 +72,6 @@ const CATEGORY_META: Record<string, { bar: string; label: string }> = {
   internal:      { bar: '#6b7280', label: 'Internal Kementerian' },
 }
 
-const LINK_ICON: Record<string, string> = {
-  berita: '🌐',
-  press_release: '📰',
-  dokumen: '📄',
-}
-
-const LINK_LABEL: Record<string, string> = {
-  berita: 'Berita',
-  press_release: 'Press Release',
-  dokumen: 'Dokumen',
-}
 
 const DAYS_ID = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab']
 const MONTHS_ID = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des']
@@ -296,37 +293,69 @@ function KpiWeightsPanel({ weights, agendas }: { weights?: KpiWeight[]; agendas:
   )
 }
 
-function NewsLinksPanel({ links }: { links?: MinisterLink[] }) {
-  const fallback: MinisterLink[] = [
-    { id: 1, type: 'berita',        title: 'Situs Resmi KLH',        url: 'https://www.menlhk.go.id',          source: 'menlhk.go.id' },
-    { id: 2, type: 'press_release', title: 'Siaran Pers Terkini',     url: 'https://www.menlhk.go.id/site/post', source: 'Humas KLH' },
-    { id: 3, type: 'dokumen',       title: 'Portal Data Lingkungan',  url: 'https://data.menlhk.go.id',          source: 'Sekretariat KLH' },
+function IncomingPanel({ incoming }: { incoming?: IncomingInvite[] }) {
+  const fallback: IncomingInvite[] = [
+    { id: 1, from: 'Kemenko Marves',  event: 'Rakor Carbon Tax',        date: '3 Juni' },
+    { id: 2, from: 'UN Environment',  event: 'High-Level Dialogue',     date: '8 Juni · Nairobi' },
+    { id: 3, from: 'PT Pertamina',    event: 'Peresmian Green Refinery', date: '12 Juni' },
   ]
+  const items = incoming && incoming.length > 0 ? incoming : fallback
 
+  return (
+    <div style={{ background: 'white', border: '1px solid var(--line)', borderRadius: 6, padding: '16px 18px', marginBottom: 16 }}>
+      <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, letterSpacing: '0.2em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--bark-soft)', marginBottom: 14 }}>
+        Undangan Masuk · Hari Ini
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {items.map(item => (
+          <div key={item.id} style={{ paddingBottom: 12, borderBottom: '1px dashed var(--line)' }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', marginBottom: 2 }}>{item.from}</div>
+            <div style={{ fontSize: 12, color: 'var(--bark-soft)' }}>{item.event} · {item.date}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function NewsLinksSection({ links }: { links?: MinisterLink[] }) {
+  const fallback: MinisterLink[] = [
+    { id: 1, type: 'berita',        title: 'Menteri Jumhur tegaskan komitmen Indonesia di COP31 menjelang Belém', url: 'https://www.menlhk.go.id', source: 'Kompas', published_at: '2026-05-24' },
+    { id: 2, type: 'press_release', title: 'Siaran Pers KLH No. 124/PR/2026 — Capaian 30 Hari Pertama',          url: 'https://www.menlhk.go.id/site/post', source: 'klhk.go.id', published_at: '2026-05-23' },
+    { id: 3, type: 'dokumen',       title: 'Permen LH No. 6/2025 — Baku Mutu Air Limbah (revisi)',                url: 'https://data.menlhk.go.id', source: 'JDIH KLH' },
+  ]
   const items = links && links.length > 0
     ? [...links].sort((a, b) => (b.is_featured ? 1 : 0) - (a.is_featured ? 1 : 0))
     : fallback
 
+  const TYPE_LABEL: Record<string, string> = { berita: 'Berita', press_release: 'Press Release', dokumen: 'Regulasi' }
+
   return (
-    <div style={{ background: 'white', border: '1px solid var(--line)', borderRadius: 6, padding: '16px 18px' }}>
-      <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, letterSpacing: '0.2em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--bark-soft)', marginBottom: 14 }}>
-        Tautan Berita · Press Release · Dokumen
+    <div style={{ marginTop: 32, paddingTop: 24, borderTop: '1px solid var(--line)' }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 20 }}>
+        <h3 style={{ fontFamily: 'Fraunces, serif', fontSize: 20, fontWeight: 500, color: 'var(--ink)', margin: 0 }}>
+          Tautan <em style={{ fontStyle: 'italic', color: 'var(--clay)' }}>Berita · Press Release · Dokumen Terkait</em>
+        </h3>
+        <span style={{ fontSize: 11, color: 'var(--bark-soft)', fontFamily: 'JetBrains Mono, monospace' }}>Diperbarui otomatis dari sumber resmi</span>
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
         {items.map(link => (
           <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer"
-            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', border: `1px solid ${link.is_featured ? 'var(--sun)' : 'var(--line)'}`, borderRadius: 4, textDecoration: 'none', background: link.is_featured ? '#fffbf0' : 'var(--paper)' }}
+            style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '16px 18px', border: '1px solid var(--line)', borderLeft: `3px solid var(--leaf-mid)`, borderRadius: '0 6px 6px 0', textDecoration: 'none', background: 'white', minHeight: 110 }}
           >
-            <span style={{ fontSize: 16 }}>{LINK_ICON[link.type] || '🔗'}</span>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 9, fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--bark-soft)', marginBottom: 2 }}>
-                {LINK_LABEL[link.type] || link.type}
-                {link.published_at && <span> · {new Date(link.published_at).toLocaleDateString('id-ID')}</span>}
+            <div>
+              <div style={{ fontSize: 9, fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--leaf-deep)', marginBottom: 8 }}>
+                {TYPE_LABEL[link.type] || link.type}
               </div>
-              <div style={{ fontSize: 12, color: 'var(--ink)', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{link.title}</div>
-              {link.source && <div style={{ fontSize: 10, color: 'var(--bark-soft)', marginTop: 1 }}>{link.source}</div>}
+              <div style={{ fontSize: 13, color: 'var(--ink)', fontWeight: 500, lineHeight: 1.4 }}>{link.title}</div>
             </div>
-            {link.is_featured && <span style={{ fontSize: 9, fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: 'var(--sun)', letterSpacing: '0.1em' }}>★</span>}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 12 }}>
+              <div>
+                {link.source && <span style={{ fontSize: 11, color: 'var(--bark-soft)' }}>{link.source}</span>}
+                {link.published_at && <span style={{ fontSize: 11, color: 'var(--bark-soft)' }}> · {new Date(link.published_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</span>}
+              </div>
+              <span style={{ fontSize: 14, color: 'var(--bark-soft)' }}>↗</span>
+            </div>
           </a>
         ))}
       </div>
@@ -438,11 +467,14 @@ export default function AgendaPanel() {
 
         {/* Right sidebar */}
         <div>
+          <IncomingPanel incoming={response.incoming_today} />
           <CategoryStatsPanel counts={stats?.category_counts} agendas={agendas} />
           <KpiWeightsPanel weights={stats?.kpi_weights} agendas={agendas} />
-          <NewsLinksPanel links={response.links} />
         </div>
       </div>
+
+      {/* Full-width bottom: news/press/docs */}
+      <NewsLinksSection links={response.links} />
 
       {showForm && canManage && (
         <AgendaFormModal
