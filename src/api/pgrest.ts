@@ -149,14 +149,58 @@ export const whatsappApi = {
     api.post('/api/whatsapp/receive', data),
 }
 
+// Minister Agenda & Achievements
+export const ministerApi = {
+  // Agenda endpoints
+  getAgendas: (params?: { status?: string; limit?: number; page?: number }) => {
+    const qs = params ? '?' + new URLSearchParams(
+      Object.entries(params).map(([k, v]) => [k, String(v)])
+    ).toString() : ''
+    return api.get<{
+      data: any[]
+      page: number
+      limit: number
+      total: number
+    } | any[]>(`/api/minister/agendas${qs}`)
+  },
+  createAgenda: (data: any) =>
+    api.post('/api/minister/agendas', data),
+  updateAgenda: (id: string | number, data: Partial<any>) =>
+    api.patch(`/api/minister/agendas/${id}`, data),
+  deleteAgenda: (id: string | number) =>
+    api.patch(`/api/minister/agendas/${id}`, { status: 'cancelled' }),
+
+  // Achievements endpoints
+  getAchievements: (params?: { limit?: number; page?: number }) => {
+    const qs = params ? '?' + new URLSearchParams(
+      Object.entries(params).map(([k, v]) => [k, String(v)])
+    ).toString() : ''
+    return api.get<{
+      data: any[]
+      page: number
+      limit: number
+      total: number
+    } | any[]>(`/api/minister/achievements${qs}`)
+  },
+  createAchievement: (data: any) =>
+    api.post('/api/minister/achievements', data),
+  updateAchievement: (id: string | number, data: Partial<any>) =>
+    api.patch(`/api/minister/achievements/${id}`, data),
+  deleteAchievement: (id: string | number) =>
+    api.patch(`/api/minister/achievements/${id}`, { deleted_at: new Date().toISOString() }),
+}
+
 // Types are imported from types/index.ts
 import type {
   User, Customer, Category, Ticket, TicketHistory,
   Conversation, Message, KnowledgeDoc, ChatbotConfig,
   DailyStats, TicketSummary, ProvinceCount, CategoryStats
 } from '../types'
+import type { Agenda, Achievement, MinisterProfileUpdate } from '../types/agenda'
+
 export type {
   User, Customer, Category, Ticket, TicketHistory,
   Conversation, Message, KnowledgeDoc, ChatbotConfig,
-  DailyStats, TicketSummary, ProvinceCount, CategoryStats
+  DailyStats, TicketSummary, ProvinceCount, CategoryStats,
+  Agenda, Achievement, MinisterProfileUpdate
 }

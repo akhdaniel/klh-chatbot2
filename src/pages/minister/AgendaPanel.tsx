@@ -1,151 +1,291 @@
-const AGENDA = [
-  { day: '26', dayName: 'SEL', time: '09:00', cat: 'Kenegaraan', catClass: 'state', title: 'Sidang Kabinet Paripurna — Presiden Prabowo Subianto', loc: 'Istana Negara', peserta: '30 Menteri', tujuan: 'Pembahasan RPJMN Lingkungan 2025–2029', priority: 'critical', skor: 95 },
-  { day: '27', dayName: 'RAB', time: '14:00', cat: 'Internasional', catClass: 'intl', title: 'COP31 Preparatory Bilateral — Menteri Lingkungan Brasil', loc: 'Hotel Indonesia Kempinski', peserta: 'Bilateral', tujuan: 'Carbon market & deforestasi', priority: 'critical', skor: 92 },
-  { day: '28', dayName: 'KAM', time: '10:30', cat: 'Publik', catClass: 'public', title: 'Peresmian PLTSa Cilegon — Pembangkit Listrik Tenaga Sampah', loc: 'Cilegon, Banten', peserta: 'Liputan media nasional', tujuan: 'Implementasi "Akhiri Open Dumping"', priority: 'high', skor: 88 },
-  { day: '29', dayName: 'JUM', time: '08:00', cat: 'Koordinasi', catClass: 'coord', title: 'Rakornas Penanganan Karhutla — 10 Provinsi Rawan', loc: 'Auditorium KLH', peserta: 'Gubernur, Bupati, Kapolda', tujuan: 'Persiapan musim kering 2026', priority: 'high', skor: 82 },
-  { day: '30', dayName: 'SAB', time: '19:00', cat: 'Protokoler', catClass: 'proto', title: 'Penganugerahan Kalpataru & Adipura 2026', loc: 'Istana Wakil Presiden', peserta: '35 penerima', tujuan: 'Live TVRI', priority: 'medium', skor: 72 },
-  { day: '27', dayName: 'RAB', time: '09:00', cat: 'Internal', catClass: 'internal', title: 'Webinar UMKM Hijau — Sertifikasi Ekolabel', loc: 'Daring', peserta: '~300 peserta UMKM', tujuan: 'Delegasi ke Dirjen PSLB3', priority: 'delegate', skor: 35 },
-  { day: '28', dayName: 'KAM', time: '15:00', cat: 'Internal', catClass: 'internal', title: 'Rapat Teknis Revisi Baku Mutu Air Limbah', loc: 'Kantor KLH', peserta: 'Tim teknis', tujuan: 'Delegasi ke Dirjen PPKL', priority: 'delegate', skor: 28 },
-]
-
-const PRIORITY_BADGE: Record<string, { bg: string; color: string; label: string }> = {
-  critical: { bg: 'var(--clay)', color: 'white', label: 'Kritis' },
-  high: { bg: 'var(--sun)', color: 'var(--leaf-deep)', label: 'Tinggi' },
-  medium: { bg: 'var(--leaf-light)', color: 'var(--leaf-deep)', label: 'Sedang' },
-  delegate: { bg: 'white', color: 'var(--bark-soft)', label: 'Delegasi' },
-}
+import { useState, useEffect } from 'react'
+import { useAuth } from '../../context/AuthContext'
+import { ministerApi } from '../../api/pgrest'
+import type { Agenda } from '../../types/agenda'
+import AgendaModal from '../../components/AgendaModal'
 
 const BORDER_COLOR: Record<string, string> = {
-  critical: 'var(--clay)', high: 'var(--sun)', medium: 'var(--leaf-mid)', delegate: 'var(--line)',
+  critical: 'var(--clay)',
+  high: 'var(--sun)',
+  medium: 'var(--leaf-mid)',
+  low: 'var(--line)',
 }
-
-const CAT_STYLE: Record<string, { bg: string; color: string }> = {
-  state: { bg: '#fef3c7', color: 'var(--status-open)' },
-  intl: { bg: '#dbeafe', color: 'var(--status-progress)' },
-  coord: { bg: '#ede9fe', color: '#7c3aed' },
-  public: { bg: '#d1fae5', color: 'var(--status-resolved)' },
-  proto: { bg: '#fce7f3', color: '#be185d' },
-  internal: { bg: '#f3f4f6', color: 'var(--bark-soft)' },
-}
-
-const INVITATIONS = [
-  { from: 'Kemenko Marves', event: 'Rakor Carbon Tax · 3 Juni' },
-  { from: 'UN Environment', event: 'High-Level Dialogue · 8 Juni · Nairobi' },
-  { from: 'PT Pertamina', event: 'Peresmian Green Refinery · 12 Juni' },
-]
-
-const CAT_RANKS = [
-  { rank: '01', name: 'Kenegaraan', pct: 100, color: '#fbbf24', count: 14 },
-  { rank: '02', name: 'Internasional', pct: 78, color: '#3b82f6', count: 11 },
-  { rank: '03', name: 'Koordinasi Antar-K/L', pct: 64, color: '#7c3aed', count: 9 },
-  { rank: '04', name: 'Publik & Peresmian', pct: 50, color: '#10b981', count: 7 },
-  { rank: '05', name: 'Protokoler', pct: 36, color: '#ec4899', count: 5 },
-  { rank: '06', name: 'Internal Kementerian', pct: 8, color: '#6b7280', count: 1 },
-]
 
 export default function AgendaPanel() {
+  const { user } = useAuth()
+  const [agendas, setAgendas] = useState<Agenda[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [showModal, setShowModal] = useState(false)
+  const [editingAgenda, setEditingAgenda] = useState<Agenda | undefined>()
+  const [saving, setSaving] = useState(false)
+
+  // Check if user can manage agendas (admin or has allow_add_agenda flag)
+  const canManage = user?.role === 'admin'
+
+  useEffect(() => {
+    fetchAgendas()
+  }, [])
+
+  const fetchAgendas = async () => {
+    try {
+      setLoading(true)
+      const response = await ministerApi.getAgendas({ limit: 50 })
+      const data = Array.isArray(response) ? response : response.data || []
+      setAgendas(data)
+      setError(null)
+    } catch (err) {
+      console.error('Failed to fetch agendas:', err)
+      setError('Gagal memuat agenda')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSaveAgenda = async (data: Partial<Agenda>) => {
+    try {
+      setSaving(true)
+      if (editingAgenda) {
+        await ministerApi.updateAgenda(editingAgenda.id, data)
+      } else {
+        await ministerApi.createAgenda(data)
+      }
+      await fetchAgendas()
+      setEditingAgenda(undefined)
+    } catch (err) {
+      throw err
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDeleteAgenda = async (id: string | number) => {
+    if (!confirm('Hapus agenda ini?')) return
+    try {
+      await ministerApi.deleteAgenda(id)
+      await fetchAgendas()
+    } catch (err) {
+      console.error('Failed to delete agenda:', err)
+    }
+  }
+
+  const handleEditAgenda = (agenda: Agenda) => {
+    setEditingAgenda(agenda)
+    setShowModal(true)
+  }
+
+  if (loading) {
+    return <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--bark-soft)' }}>Loading agenda...</div>
+  }
+
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 24 }}>
       <div>
-        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 18, paddingBottom: 12, borderBottom: '1px solid var(--line)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18, paddingBottom: 12, borderBottom: '1px solid var(--line)' }}>
           <h3 style={{ fontFamily: 'Fraunces, serif', fontSize: 22, fontWeight: 500, color: 'var(--leaf-deep)' }}>
-            Agenda Pekan Ini <em style={{ fontStyle: 'italic', color: 'var(--clay)' }}>· 25–31 Mei 2026</em>
+            Agenda Menteri <em style={{ fontStyle: 'italic', color: 'var(--clay)' }}>· Real-time</em>
           </h3>
-          <span style={{ fontSize: 12, color: 'var(--bark-soft)', fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.05em' }}>47 undangan masuk · 12 dijadwalkan</span>
+          {canManage && (
+            <button
+              onClick={() => {
+                setEditingAgenda(undefined)
+                setShowModal(true)
+              }}
+              style={{ fontSize: 12, fontWeight: 600, padding: '8px 14px', background: 'var(--leaf-deep)', color: 'white', border: 'none', borderRadius: 5, cursor: 'pointer' }}
+            >
+              + Tambah Agenda
+            </button>
+          )}
         </div>
 
-        {/* AI Card */}
-        <div style={{ background: 'linear-gradient(135deg, var(--leaf-paper), white)', border: '1.5px solid var(--ink)', padding: '18px 20px', position: 'relative', marginBottom: 18 }}>
-          <div style={{ position: 'absolute', top: -12, left: 16, background: 'var(--ink)', color: 'var(--sun)', fontFamily: 'JetBrains Mono, monospace', fontSize: 10, fontWeight: 700, padding: '3px 10px', letterSpacing: '0.15em' }}>AI</div>
-          <div style={{ fontFamily: 'Fraunces, serif', fontSize: 16, fontWeight: 500, color: 'var(--leaf-deep)', marginBottom: 8 }}>Analisis & Saran Prioritas — minggu ini</div>
-          <div style={{ fontSize: 13, lineHeight: 1.55, color: 'var(--bark)' }}>
-            Dari <strong style={{ color: 'var(--leaf-deep)' }}>47 undangan</strong>, AI menganalisis kepadatan jadwal, urgensi politik, dampak strategis, dan tujuan ESG. Rekomendasi: prioritaskan <strong style={{ color: 'var(--leaf-deep)' }}>3 agenda kritis</strong> dan delegasikan sisanya.
+        {error && <div style={{ background: '#fee', color: 'var(--clay)', padding: 12, borderRadius: 6, marginBottom: 16, fontSize: 12 }}>{error}</div>}
+
+        {agendas.length === 0 ? (
+          <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--bark-soft)', fontSize: 14 }}>
+            Belum ada agenda
           </div>
-          {[
-            { mark: '✓', cls: 'hadiri', bg: 'var(--leaf-mid)', text: '<strong>Hadiri:</strong> Sidang Kabinet, COP31 Preparatory Meeting, Peresmian PLTSa Cilegon — dampak nasional & internasional tinggi' },
-            { mark: '→', cls: 'delegasi', bg: 'var(--clay)', text: '<strong>Delegasikan:</strong> Webinar UMKM Hijau → Dirjen PSLB3 · Rapat teknis baku mutu → Dirjen PPKL · Sosialisasi sekolah → Eselon II' },
-          ].map(r => (
-            <div key={r.cls} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderTop: '1px dashed var(--line-soft)', marginTop: 10, fontSize: 12 }}>
-              <div style={{ width: 18, height: 18, borderRadius: '50%', background: r.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: 'white', flexShrink: 0 }}>{r.mark}</div>
-              <span style={{ flex: 1, color: 'var(--ink)' }} dangerouslySetInnerHTML={{ __html: r.text }} />
-            </div>
-          ))}
-        </div>
-
-        {/* Agenda cards */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {AGENDA.map((a, i) => (
-            <div key={i} style={{ display: 'grid', gridTemplateColumns: '80px 1fr auto', gap: 16, padding: '16px 18px', background: a.priority === 'delegate' ? 'rgba(248,248,245,0.6)' : 'white', border: '1px solid var(--line)', borderLeft: `4px solid ${BORDER_COLOR[a.priority]}`, borderRadius: '0 4px 4px 0', opacity: a.priority === 'delegate' ? 0.85 : 1, transition: 'all 0.2s ease' }}>
-              <div style={{ textAlign: 'center', paddingRight: 16, borderRight: '1px dashed var(--line-soft)' }}>
-                <div style={{ fontFamily: 'Fraunces, serif', fontSize: 26, fontWeight: 500, lineHeight: 1, color: 'var(--leaf-deep)' }}>{a.day}</div>
-                <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--bark-soft)', marginTop: 4 }}>{a.dayName}</div>
-                <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: 'var(--ink)', fontWeight: 600, marginTop: 6 }}>{a.time}</div>
-              </div>
-              <div>
-                <span style={{ display: 'inline-block', fontSize: 9.5, fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '2px 8px', borderRadius: 3, fontWeight: 700, marginBottom: 6, ...CAT_STYLE[a.catClass] }}>{a.cat}</span>
-                <div style={{ fontFamily: 'Fraunces, serif', fontSize: 17, fontWeight: 500, color: 'var(--ink)', marginBottom: 4, lineHeight: 1.3 }}>{a.title}</div>
-                <div style={{ fontSize: 12, color: 'var(--bark-soft)', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                  {a.loc && <span>📍 <strong style={{ color: 'var(--ink)' }}>{a.loc}</strong></span>}
-                  {a.peserta && <span>👥 {a.peserta}</span>}
-                  {a.tujuan && <span>🎯 {a.tujuan}</span>}
-                </div>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, minWidth: 110 }}>
-                <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9.5, fontWeight: 700, letterSpacing: '0.1em', padding: '4px 10px', borderRadius: 3, textTransform: 'uppercase', background: PRIORITY_BADGE[a.priority].bg, color: PRIORITY_BADGE[a.priority].color, border: a.priority === 'delegate' ? '1px dashed var(--line)' : 'none' }}>{PRIORITY_BADGE[a.priority].label}</span>
-                <div style={{ fontFamily: 'Fraunces, serif', fontSize: 22, fontWeight: 500, color: 'var(--leaf-deep)', lineHeight: 1 }}>
-                  {a.skor}<em style={{ fontStyle: 'italic', fontSize: 12, color: 'var(--bark-soft)', fontWeight: 400 }}>/100</em>
-                </div>
-                <div style={{ display: 'flex', gap: 4 }}>
-                  {a.priority !== 'delegate' ? (
-                    <>
-                      <button style={{ background: 'var(--ink)', color: 'white', border: '1px solid var(--ink)', padding: '4px 8px', fontSize: 10, fontWeight: 600, cursor: 'pointer', borderRadius: 3 }}>Hadir</button>
-                      <button style={{ background: 'white', border: '1px solid var(--line)', padding: '4px 8px', fontSize: 10, fontWeight: 600, cursor: 'pointer', borderRadius: 3, color: 'var(--bark)' }}>Brief</button>
-                    </>
-                  ) : (
-                    <button style={{ background: 'white', border: '1px solid var(--line)', padding: '4px 8px', fontSize: 10, fontWeight: 600, cursor: 'pointer', borderRadius: 3, color: 'var(--bark)' }}>Delegasikan</button>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {agendas.map((agenda) => (
+              <div
+                key={agenda.id}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr auto',
+                  gap: 16,
+                  padding: '16px 18px',
+                  background: 'white',
+                  border: '1px solid var(--line)',
+                  borderLeft: `4px solid ${BORDER_COLOR[agenda.status] || 'var(--line)'}`,
+                  borderRadius: '0 4px 4px 0',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                <div>
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 8 }}>
+                    <span
+                      style={{
+                        display: 'inline-block',
+                        fontSize: 10,
+                        fontFamily: 'JetBrains Mono, monospace',
+                        letterSpacing: '0.1em',
+                        textTransform: 'uppercase',
+                        padding: '3px 8px',
+                        borderRadius: 3,
+                        fontWeight: 700,
+                        background: 'var(--leaf-light)',
+                        color: 'var(--leaf-deep)',
+                      }}
+                    >
+                      {agenda.category || 'agenda'}
+                    </span>
+                    <span style={{ fontSize: 11, color: 'var(--bark-soft)' }}>
+                      {new Date(agenda.start_date).toLocaleDateString('id-ID')}
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: 'Fraunces, serif',
+                      fontSize: 17,
+                      fontWeight: 500,
+                      color: 'var(--ink)',
+                      marginBottom: 8,
+                      lineHeight: 1.3,
+                    }}
+                  >
+                    {agenda.title}
+                  </div>
+                  {agenda.description && (
+                    <div style={{ fontSize: 13, color: 'var(--bark-soft)', marginBottom: 8, lineHeight: 1.4 }}>
+                      {agenda.description}
+                    </div>
                   )}
+                  <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: 12, color: 'var(--bark-soft)' }}>
+                    {agenda.location && <span>📍 {agenda.location}</span>}
+                    {agenda.end_date && (
+                      <span>
+                        📅 s/d {new Date(agenda.end_date).toLocaleDateString('id-ID')}
+                      </span>
+                    )}
+                    <span style={{ textTransform: 'capitalize' }}>
+                      Status: <strong style={{ color: 'var(--ink)' }}>{agenda.status}</strong>
+                    </span>
+                  </div>
                 </div>
+
+                {canManage && (
+                  <div style={{ display: 'flex', gap: 6, flexDirection: 'column', minWidth: 80 }}>
+                    <button
+                      onClick={() => handleEditAgenda(agenda)}
+                      style={{
+                        background: 'white',
+                        border: '1px solid var(--line)',
+                        padding: '6px 10px',
+                        fontSize: 10,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        borderRadius: 3,
+                        color: 'var(--leaf-deep)',
+                      }}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDeleteAgenda(agenda.id)}
+                      style={{
+                        background: 'white',
+                        border: '1px solid var(--clay)',
+                        padding: '6px 10px',
+                        fontSize: 10,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        borderRadius: 3,
+                        color: 'var(--clay)',
+                      }}
+                    >
+                      Hapus
+                    </button>
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Right sidebar */}
-      <div>
-        <button style={{ background: 'var(--sun)', border: '1.5px solid var(--ink)', padding: '12px 16px', width: '100%', cursor: 'pointer', fontFamily: 'JetBrains Mono, monospace', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--leaf-deep)', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-          ✉ Ajukan Undangan Menteri
-        </button>
-
-        <div style={{ background: 'white', border: '1px solid var(--line)', padding: '16px 18px', marginBottom: 14 }}>
-          <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--bark-soft)', marginBottom: 12, display: 'flex', justifyContent: 'space-between' }}>
-            <span>Kategori Agenda · Bulan Ini</span>
-            <span style={{ color: 'var(--clay)' }}>Mei 2026</span>
+            ))}
           </div>
-          {CAT_RANKS.map(r => (
-            <div key={r.rank} style={{ display: 'grid', gridTemplateColumns: '24px 1fr auto', gap: 10, padding: '6px 0', alignItems: 'center', borderBottom: '1px dashed var(--line-soft)' }}>
-              <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: 11, color: 'var(--clay)' }}>{r.rank}</div>
-              <div>
-                <div style={{ fontSize: 12.5 }}>{r.name}</div>
-                <div style={{ height: 6, background: 'var(--line-soft)', borderRadius: 2, overflow: 'hidden', marginTop: 4 }}>
-                  <div style={{ width: `${r.pct}%`, height: '100%', background: r.color, borderRadius: 2 }} />
-                </div>
-              </div>
-              <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11, fontWeight: 600, color: 'var(--ink)' }}>{r.count}</div>
-            </div>
-          ))}
-        </div>
+        )}
+      </div>
 
-        <div style={{ background: 'white', border: '1px solid var(--line)', padding: '16px 18px', marginBottom: 14 }}>
-          <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--bark-soft)', marginBottom: 12 }}>Undangan Masuk · Hari Ini</div>
-          {INVITATIONS.map((inv, i) => (
-            <div key={i} style={{ padding: '8px 0', borderBottom: i < INVITATIONS.length - 1 ? '1px dashed var(--line-soft)' : 'none', fontSize: 11.5, lineHeight: 1.6 }}>
-              <strong style={{ color: 'var(--ink)' }}>{inv.from}</strong><br />
-              <span style={{ color: 'var(--bark-soft)' }}>{inv.event}</span>
+      {/* Right sidebar - info panel */}
+      <div>
+        {canManage && (
+          <div style={{ background: 'var(--leaf-light)', border: '1.5px solid var(--leaf-mid)', padding: '14px 16px', borderRadius: 6, marginBottom: 16, fontSize: 12 }}>
+            <div style={{ fontWeight: 600, color: 'var(--leaf-deep)', marginBottom: 6 }}>✓ Admin Mode</div>
+            <div style={{ color: 'var(--bark-soft)', lineHeight: 1.4 }}>
+              Anda dapat menambah, mengubah, dan menghapus agenda.
             </div>
-          ))}
+          </div>
+        )}
+
+        <div style={{ background: 'white', border: '1px solid var(--line)', padding: '16px 18px', borderRadius: 6 }}>
+          <div
+            style={{
+              fontFamily: 'JetBrains Mono, monospace',
+              fontSize: 10,
+              letterSpacing: '0.15em',
+              textTransform: 'uppercase',
+              fontWeight: 700,
+              color: 'var(--bark-soft)',
+              marginBottom: 12,
+            }}
+          >
+            Statistik Agenda
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
+              <span style={{ fontSize: 12, color: 'var(--bark)' }}>Total Agenda</span>
+              <span style={{ fontFamily: 'Fraunces, serif', fontSize: 18, fontWeight: 500, color: 'var(--leaf-deep)' }}>
+                {agendas.length}
+              </span>
+            </div>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr auto',
+                gap: 8,
+                paddingTop: 10,
+                borderTop: '1px dashed var(--line-soft)',
+              }}
+            >
+              <span style={{ fontSize: 12, color: 'var(--bark-soft)' }}>Dalam rencana</span>
+              <span style={{ fontWeight: 600, color: 'var(--ink)' }}>
+                {agendas.filter((a) => a.status === 'planned').length}
+              </span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
+              <span style={{ fontSize: 12, color: 'var(--bark-soft)' }}>Sedang berlangsung</span>
+              <span style={{ fontWeight: 600, color: 'var(--ink)' }}>
+                {agendas.filter((a) => a.status === 'ongoing').length}
+              </span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
+              <span style={{ fontSize: 12, color: 'var(--bark-soft)' }}>Selesai</span>
+              <span style={{ fontWeight: 600, color: 'var(--ink)' }}>
+                {agendas.filter((a) => a.status === 'completed').length}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
+
+      {/* Agenda Modal */}
+      <AgendaModal
+        isOpen={showModal}
+        agenda={editingAgenda}
+        onClose={() => {
+          setShowModal(false)
+          setEditingAgenda(undefined)
+        }}
+        onSave={handleSaveAgenda}
+        loading={saving}
+      />
     </div>
   )
 }
