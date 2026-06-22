@@ -234,9 +234,14 @@ export interface MinisterLink {
 
 export interface MinisterInvitation {
   id: number
-  from_org: string
-  title: string
-  date_time: string
+  // BFF agenda response shape (incoming_today[])
+  from?: string
+  event?: string
+  date?: string
+  // BFF invitations endpoint shape
+  from_org?: string
+  title?: string
+  date_time?: string
   location?: string | null
   urgency?: string
   response?: 'pending' | 'confirmed' | 'delegated' | 'declined'

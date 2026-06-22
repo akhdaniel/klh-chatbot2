@@ -308,7 +308,10 @@ function KpiWeightsPanel({ weights, agendas, canManage }: { weights?: MinisterKp
 
 function fmtDateTime(dt: string) {
   try {
-    const d = new Date(dt)
+    // Handle "2026-06-22 06:00" (space-separated, no timezone) and ISO strings
+    const normalized = dt.replace(' ', 'T')
+    const d = new Date(normalized)
+    if (isNaN(d.getTime())) return dt
     return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) + ' · ' + d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
   } catch { return dt }
 }
@@ -394,8 +397,8 @@ function IncomingPanel({ initialItems, canManage }: { initialItems?: MinisterInv
             <div key={item.id} style={{ paddingBottom: 12, borderBottom: '1px dashed var(--line)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', marginBottom: 2 }}>{item.from_org}</div>
-                  <div style={{ fontSize: 12, color: 'var(--bark-soft)' }}>{item.title} · {fmtDateTime(item.date_time)}</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', marginBottom: 2 }}>{item.from_org ?? item.from}</div>
+                  <div style={{ fontSize: 12, color: 'var(--bark-soft)' }}>{item.title ?? item.event} · {fmtDateTime(item.date_time ?? item.date ?? '')}</div>
                   {item.location && <div style={{ fontSize: 11, color: 'var(--bark-soft)', marginTop: 2 }}>📍 {item.location}</div>}
                   {item.response && item.response !== 'pending' && (
                     <div style={{ fontSize: 10, color: STATUS_COLOR[item.response] || 'var(--bark-soft)', marginTop: 4, fontWeight: 600, fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
@@ -407,7 +410,7 @@ function IncomingPanel({ initialItems, canManage }: { initialItems?: MinisterInv
                   <button onClick={() => handleDelete(item.id)} style={{ fontSize: 10, padding: '2px 6px', background: 'white', color: 'var(--clay)', border: '1px solid var(--clay)', borderRadius: 3, cursor: 'pointer', flexShrink: 0 }}>✕</button>
                 )}
               </div>
-              {canManage && (!item.response || item.response === 'pending') && (
+              {canManage && (!item.response || item.response === 'pending' || item.response === undefined) && (
                 <div style={{ display: 'flex', gap: 5, marginTop: 8 }}>
                   <button onClick={() => handleRespond(item.id, 'confirm')} style={{ fontSize: 9, padding: '3px 8px', background: 'var(--leaf-deep)', color: 'white', border: 'none', borderRadius: 3, cursor: 'pointer', fontWeight: 600, fontFamily: 'JetBrains Mono, monospace' }}>Konfirmasi</button>
                   <button onClick={() => handleRespond(item.id, 'delegate')} style={{ fontSize: 9, padding: '3px 8px', background: 'var(--sun)', color: 'var(--ink)', border: 'none', borderRadius: 3, cursor: 'pointer', fontWeight: 600, fontFamily: 'JetBrains Mono, monospace' }}>Delegasi</button>
