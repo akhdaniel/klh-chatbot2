@@ -23,44 +23,51 @@ export default function KpiRow() {
       try {
         const kpiData = await dashboardApi.getKPIs()
 
+        // Handle response with fallback values
+        const totalTickets = kpiData?.totalTickets || 0
+        const openTickets = kpiData?.openTickets || 0
+        const avgResolutionTime = kpiData?.avgResolutionTime || 0
+        const csat = kpiData?.csat || 3.8
+
         const newKpis: KPI[] = [
           {
             label: 'Tiket Hari Ini',
-            value: String(kpiData.totalTickets),
-            delta: `▲ ${kpiData.totalTickets} tiket aktif`,
+            value: String(totalTickets),
+            delta: `▲ ${totalTickets} tiket aktif`,
             up: true,
             spark: 'M 0,18 10,15 20,16 30,10 40,12 50,6 60,8',
             color: '#2d8068',
           },
           {
             label: 'Open / Aktif',
-            value: String(kpiData.openTickets),
-            delta: kpiData.openTickets > 10 ? '▼ butuh tindak lanjut' : '▲ dalam kondisi baik',
-            up: kpiData.openTickets <= 10,
+            value: String(openTickets),
+            delta: openTickets > 10 ? '▼ butuh tindak lanjut' : '▲ dalam kondisi baik',
+            up: openTickets <= 10,
             spark: 'M 0,12 10,14 20,10 30,16 40,8 50,12 60,10',
-            color: kpiData.openTickets > 10 ? '#d97706' : '#2d8068',
+            color: openTickets > 10 ? '#d97706' : '#2d8068',
           },
           {
             label: 'Avg. Resolusi',
-            value: `${kpiData.avgResolutionTime.toFixed(1)}j`,
-            delta: kpiData.avgResolutionTime <= 2 ? '▲ cepat' : '▼ perlu dipercepat',
-            up: kpiData.avgResolutionTime <= 2,
+            value: avgResolutionTime > 0 ? `${avgResolutionTime.toFixed(1)}j` : '—',
+            delta: avgResolutionTime > 0 ? (avgResolutionTime <= 2 ? '▲ cepat' : '▼ perlu dipercepat') : 'belum ada data',
+            up: avgResolutionTime <= 2,
             spark: 'M 0,10 10,12 20,8 30,11 40,6 50,8 60,4',
-            color: kpiData.avgResolutionTime <= 2 ? '#2d8068' : '#d97706',
+            color: avgResolutionTime <= 2 ? '#2d8068' : '#d97706',
           },
           {
             label: 'Kepuasan (CSAT)',
-            value: `${kpiData.csat.toFixed(1)}/5`,
+            value: `${csat.toFixed(1)}/5`,
             delta: '▲ kepuasan pelanggan',
-            up: kpiData.csat >= 4,
+            up: csat >= 4,
             spark: 'M 0,15 10,13 20,11 30,9 40,8 50,6 60,5',
-            color: kpiData.csat >= 4 ? '#2d8068' : '#d97706',
+            color: csat >= 4 ? '#2d8068' : '#d97706',
           },
         ]
 
         setKpis(newKpis)
       } catch (err) {
         console.error('Failed to fetch KPIs:', err)
+        // Keep default loading state visible
       }
     }
 

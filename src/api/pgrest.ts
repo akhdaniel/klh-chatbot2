@@ -50,11 +50,12 @@ export const authApi = {
 export const dashboardApi = {
   getKPIs: () =>
     api.get<{
-      totalTickets: number
-      openTickets: number
-      activeCustomers: number
-      avgResolutionTime: number
-      csat: number
+      totalTickets?: number
+      openTickets?: number
+      activeCustomers?: number
+      avgResolutionTime?: number
+      csat?: number
+      [key: string]: any
     }>('/api/dashboard/kpis'),
 }
 
