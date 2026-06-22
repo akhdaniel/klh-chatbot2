@@ -1,13 +1,16 @@
 export interface Agenda {
-  id: string | number
+  id: number
   title: string
   description?: string
-  start_date: string
-  end_date?: string
+  date: string
+  time?: string
   location?: string
-  status: 'planned' | 'confirmed' | 'completed' | 'cancelled'
-  category?: 'kenegaraan' | 'internasional' | 'koordinasi' | 'publik' | 'protokoler' | 'internal'
-  created_by?: string | number
+  priority: 'critical' | 'high' | 'medium' | 'low'
+  status: 'confirmed' | 'scheduled' | 'delegated' | 'completed' | 'cancelled'
+  category: 'kenegaraan' | 'internasional' | 'koordinasi' | 'publik' | 'protokoler' | 'internal'
+  delegation_to?: string | null
+  kpi_score?: number
+  is_kpi?: boolean
   created_at: string
   updated_at?: string
 }
