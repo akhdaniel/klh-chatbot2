@@ -5290,13 +5290,17 @@ async function loadAgenda() {
   // Category ranking sidebar
   const sideSection = document.querySelector('#panel-agenda .agenda-grid > div:last-child');
   if (sideSection) {
-    const rankContainer = sideSection.querySelector('.side-section:first-of-type');
-    if (rankContainer) {
-      const titleEl = rankContainer.querySelector('.side-section-title span:first-child');
-      if (titleEl) titleEl.textContent = 'Kategori Agenda · Bulan Ini';
-      const body = rankContainer.querySelector('.side-section-title + .cat-rank-row')?.parentElement;
-      if (body) {
-        const rows = data.categoryRanking.map(c => `
+    const sections = sideSection.querySelectorAll('.side-section');
+
+    // --- Kategori Agenda · Bulan Ini (first side-section) ---
+    if (sections[0]) {
+      // Preserve the title element, replace only the cat-rank-row siblings
+      const titleEl = sections[0].querySelector('.side-section-title');
+      if (titleEl) {
+        // Remove all existing cat-rank-rows
+        sections[0].querySelectorAll('.cat-rank-row').forEach(el => el.remove());
+        // Insert new rows after the title
+        const rowsHtml = data.categoryRanking.map(c => `
           <div class="cat-rank-row">
             <div class="cat-rank-num">${String(c.rank).padStart(2, '0')}</div>
             <div>
@@ -5306,30 +5310,30 @@ async function loadAgenda() {
             <div class="cat-rank-count">${c.count}</div>
           </div>
         `).join('');
-        body.innerHTML = rows;
+        titleEl.insertAdjacentHTML('afterend', rowsHtml);
       }
     }
 
-    // KPI Weight section
-    const kpiSection = sideSection.querySelectorAll('.side-section')[1];
-    if (kpiSection) {
-      const body = kpiSection.querySelector('div[style*="font-size:11.5px"]');
+    // --- Bobot KPI per Kategori (second side-section) ---
+    if (sections[1]) {
+      const kpiLen = data.kpiWeight.length;
+      const body = sections[1].querySelector('div[style*="font-size:11.5px"]');
       if (body) {
-        body.innerHTML = data.kpiWeight.map(k => `
-          <div style="display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px dashed var(--line-soft)">
+        body.innerHTML = data.kpiWeight.map((k, i) => `
+          <div style="display:flex; justify-content:space-between; padding:5px 0;${i < kpiLen - 1 ? ' border-bottom:1px dashed var(--line-soft)' : ''}">
             <span>${k.label}</span><strong style="color:var(--clay)">${k.score} / 100</strong>
           </div>
         `).join('');
       }
     }
 
-    // Daily invites section
-    const inviteSection = sideSection.querySelectorAll('.side-section')[2];
-    if (inviteSection) {
-      const body = inviteSection.querySelector('div[style*="font-size:11.5px"]');
+    // --- Undangan Masuk · Hari Ini (third side-section) ---
+    if (sections[2]) {
+      const invLen = data.dailyInvites.length;
+      const body = sections[2].querySelector('div[style*="font-size:11.5px"]');
       if (body) {
-        body.innerHTML = data.dailyInvites.map(inv => `
-          <div style="padding:8px 0; border-bottom:1px dashed var(--line-soft)">
+        body.innerHTML = data.dailyInvites.map((inv, i) => `
+          <div style="padding:8px 0;${i < invLen - 1 ? ' border-bottom:1px dashed var(--line-soft)' : ''}">
             <strong style="color:var(--ink)">${inv.org}</strong><br>
             <span style="color:var(--bark-soft)">${inv.desc}</span>
           </div>
