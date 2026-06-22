@@ -1,0 +1,76 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700;9..144,900&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+  --leaf-deep: #0d3b2e;
+  --leaf: #1f5f4a;
+  --leaf-mid: #2d8068;
+  --leaf-light: #d4e9dd;
+  --leaf-paper: #f4f7f1;
+  --bark: #2a2620;
+  --bark-soft: #4a4338;
+  --sun: #e8b341;
+  --sun-soft: #f5d98a;
+  --clay: #c97050;
+  --sky: #e8f0e8;
+  --ink: #1a1f1c;
+  --paper: #faf8f3;
+  --line: #d8d4c8;
+  --line-soft: #ebe7da;
+  --whatsapp-green: #128c7e;
+  --whatsapp-bg: #efe7dd;
+  --whatsapp-sent: #d9fdd3;
+  --whatsapp-received: #ffffff;
+  --status-open: #d97706;
+  --status-progress: #2563eb;
+  --status-resolved: #059669;
+  --status-closed: #6b7280;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  min-height: 100vh;
+  font-size: 14px;
+}
+
+#root { min-height: 100vh; }
+
+.font-fraunces { font-family: 'Fraunces', serif; }
+.font-mono { font-family: 'JetBrains Mono', monospace; }
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--line-soft); }
+::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
+
+.status-pill {
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 3px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-family: 'JetBrains Mono', monospace;
+  display: inline-block;
+}
+.status-pill.open { background: #fef3c7; color: var(--status-open); }
+.status-pill.in_progress { background: #dbeafe; color: var(--status-progress); }
+.status-pill.resolved { background: #d1fae5; color: var(--status-resolved); }
+.status-pill.closed { background: #e5e7eb; color: var(--status-closed); }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes msgIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes markerPulse {
+  0% { opacity: 0.6; }
+  100% { opacity: 0; }
+}
+
+.animate-fadeUp { animation: fadeUp 0.4s ease; }
