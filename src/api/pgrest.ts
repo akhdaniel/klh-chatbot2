@@ -1,7 +1,4 @@
-// Use proxy in production (Vercel), direct API in development
-const BASE_URL = import.meta.env.PROD
-  ? '/api/proxy'
-  : import.meta.env.VITE_API_URL || 'http://124.156.205.118:3001'
+const BASE_URL = 'http://124.156.205.118:3001'
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   try {
