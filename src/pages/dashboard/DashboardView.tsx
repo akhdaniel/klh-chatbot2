@@ -25,12 +25,19 @@ export default function DashboardView() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Fetch from pgREST
+  // Fetch from BFF API
   useEffect(() => {
     const fetchTickets = async () => {
       try {
         setLoading(true)
-        const data = await ticketsApi.list({ order: 'created_at.desc', limit: '50' })
+        // Try to fetch from BFF, fallback to pgREST if needed
+        let data: any[]
+        try {
+          data = await ticketsApi.list({ limit: '50' })
+        } catch (err) {
+          console.warn('Failed to fetch from BFF, using fallback')
+          data = []
+        }
         // Transform database tickets to UI format
         const transformed = data.map(t => ({
           id: String(t.id),

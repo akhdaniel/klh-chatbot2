@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { ticketsApi } from '../../api/pgrest'
+import { dashboardApi } from '../../api/pgrest'
 
 interface KPI {
   label: string
@@ -21,71 +21,40 @@ export default function KpiRow() {
   useEffect(() => {
     const fetchKPIs = async () => {
       try {
-        const tickets = await ticketsApi.list({ limit: '500' })
-
-        // Hitung KPI
-        const today = new Date()
-        today.setHours(0, 0, 0, 0)
-
-        // 1. Tiket Hari Ini
-        const todayTickets = tickets.filter(t => {
-          const ticketDate = new Date(t.created_at)
-          ticketDate.setHours(0, 0, 0, 0)
-          return ticketDate.getTime() === today.getTime()
-        }).length
-
-        // 2. Open / Aktif
-        const openTickets = tickets.filter(t => t.status === 'open' || t.status === 'pending').length
-
-        // 3. Avg. Resolusi (dalam jam)
-        const resolvedTickets = tickets.filter(t => t.closed_at || t.resolved_at)
-        let avgResolution = 0
-        if (resolvedTickets.length > 0) {
-          const totalMs = resolvedTickets.reduce((sum, t) => {
-            const startTime = new Date(t.created_at).getTime()
-            const endTime = new Date(t.closed_at || t.resolved_at || t.created_at).getTime()
-            return sum + (endTime - startTime)
-          }, 0)
-          const avgMs = totalMs / resolvedTickets.length
-          avgResolution = Math.round((avgMs / (1000 * 60 * 60)) * 10) / 10 // convert to hours
-        }
-
-        // 4. Kepuasan (CSAT) - for now using a random value based on ticket count
-        // In a real system, this would come from a feedback table
-        const csat = (3.8 + (openTickets > 10 ? -0.3 : 0.2)).toFixed(1)
+        const kpiData = await dashboardApi.getKPIs()
 
         const newKpis: KPI[] = [
           {
             label: 'Tiket Hari Ini',
-            value: String(todayTickets),
-            delta: `${todayTickets > 0 ? '▲' : '▼'} ${todayTickets} tiket hari ini`,
-            up: todayTickets > 0,
+            value: String(kpiData.totalTickets),
+            delta: `▲ ${kpiData.totalTickets} tiket aktif`,
+            up: true,
             spark: 'M 0,18 10,15 20,16 30,10 40,12 50,6 60,8',
             color: '#2d8068',
           },
           {
             label: 'Open / Aktif',
-            value: String(openTickets),
-            delta: openTickets > 10 ? '▼ butuh tindak lanjut' : '▲ dalam kondisi baik',
-            up: openTickets <= 10,
+            value: String(kpiData.openTickets),
+            delta: kpiData.openTickets > 10 ? '▼ butuh tindak lanjut' : '▲ dalam kondisi baik',
+            up: kpiData.openTickets <= 10,
             spark: 'M 0,12 10,14 20,10 30,16 40,8 50,12 60,10',
-            color: openTickets > 10 ? '#d97706' : '#2d8068',
+            color: kpiData.openTickets > 10 ? '#d97706' : '#2d8068',
           },
           {
             label: 'Avg. Resolusi',
-            value: avgResolution > 0 ? `${avgResolution}j` : 'N/A',
-            delta: avgResolution > 0 ? `${avgResolution <= 2 ? '▲ cepat' : '▼ perlu dipercepat'}` : 'belum ada yang selesai',
-            up: avgResolution <= 2,
+            value: `${kpiData.avgResolutionTime.toFixed(1)}j`,
+            delta: kpiData.avgResolutionTime <= 2 ? '▲ cepat' : '▼ perlu dipercepat',
+            up: kpiData.avgResolutionTime <= 2,
             spark: 'M 0,10 10,12 20,8 30,11 40,6 50,8 60,4',
-            color: avgResolution <= 2 ? '#2d8068' : '#d97706',
+            color: kpiData.avgResolutionTime <= 2 ? '#2d8068' : '#d97706',
           },
           {
             label: 'Kepuasan (CSAT)',
-            value: `${csat}/5`,
-            delta: '▲ based on ticket status',
-            up: parseFloat(csat) >= 4,
+            value: `${kpiData.csat.toFixed(1)}/5`,
+            delta: '▲ kepuasan pelanggan',
+            up: kpiData.csat >= 4,
             spark: 'M 0,15 10,13 20,11 30,9 40,8 50,6 60,5',
-            color: parseFloat(csat) >= 4 ? '#2d8068' : '#d97706',
+            color: kpiData.csat >= 4 ? '#2d8068' : '#d97706',
           },
         ]
 

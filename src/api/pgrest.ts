@@ -1,19 +1,34 @@
-const BASE_URL = 'https://pgrest.xerpium.com/klh'
+const BASE_URL = 'https://bff.xerpium.com'
+
+// Store JWT token in localStorage
+let authToken: string | null = null
+
+if (typeof window !== 'undefined') {
+  authToken = localStorage.getItem('authToken')
+}
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   try {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    }
+
+    // Add JWT token if available
+    if (authToken) {
+      headers['Authorization'] = `Bearer ${authToken}`
+    }
+
     const res = await fetch(`${BASE_URL}${path}`, {
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        ...options?.headers
-      },
+      headers,
       ...options,
     })
+
     if (!res.ok) {
-      console.error(`pgREST error ${res.status}: ${res.statusText}`)
+      console.error(`API error ${res.status}: ${res.statusText}`)
       throw new Error(`${res.status} ${res.statusText}`)
     }
+
     return res.json()
   } catch (error) {
     console.error('API Error:', error)
@@ -27,80 +42,83 @@ export const api = {
     request<T>(path, { method: 'POST', body: JSON.stringify(body) }),
   patch: <T>(path: string, body: unknown) =>
     request<T>(path, { method: 'PATCH', body: JSON.stringify(body) }),
+  setToken: (token: string) => {
+    authToken = token
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('authToken', token)
+    }
+  },
+  clearToken: () => {
+    authToken = null
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('authToken')
+    }
+  },
 }
 
-// Users
-export const usersApi = {
-  list: () => api.get<User[]>('/users'),
-  get: (id: string) => api.get<User>(`/users?id=eq.${id}`),
+// Authentication
+export const authApi = {
+  login: (username: string, password: string) =>
+    api.post<{ token: string }>('/api/auth/login', { username, password }),
+  signup: (username: string, password: string) =>
+    api.post<{ token: string }>('/api/auth/signup', { username, password }),
 }
 
-// Customers
-export const customersApi = {
-  list: () => api.get<Customer[]>('/customers'),
-  get: (id: string) => api.get<Customer>(`/customers?id=eq.${id}`),
-  getByPhone: (phone: string) => api.get<Customer[]>(`/customers?wa_phone=eq.${phone}`),
-}
-
-// Categories
-export const categoriesApi = {
-  list: () => api.get<Category[]>('/categories?order=sort_order.asc'),
-  get: (id: string) => api.get<Category>(`/categories?id=eq.${id}`),
+// Dashboard / KPIs
+export const dashboardApi = {
+  getKPIs: () =>
+    api.get<{
+      totalTickets: number
+      openTickets: number
+      activeCustomers: number
+      avgResolutionTime: number
+      csat: number
+    }>('/api/dashboard/kpis'),
 }
 
 // Tickets
 export const ticketsApi = {
+  create: (data: { title: string; description: string; category_id?: string }) =>
+    api.post<Ticket>('/api/tickets/create', data),
+  getStatus: (ticketNumber: string) =>
+    api.get<Ticket>(`/api/tickets/status/${ticketNumber}`),
+  updateStatus: (ticketId: string, status: string) =>
+    api.patch<Ticket>(`/api/tickets/${ticketId}/status`, { status }),
+  // Legacy pgREST methods for compatibility
   list: (params?: Record<string, string>) => {
     const qs = params ? '?' + new URLSearchParams(params).toString() : ''
     return api.get<Ticket[]>(`/tickets${qs}`)
   },
-  get: (id: string) => api.get<Ticket>(`/tickets?id=eq.${id}`),
-  update: (id: string, body: Partial<Ticket>) =>
-    api.patch<Ticket>(`/tickets?id=eq.${id}`, body),
-  byTicketNumber: (number: string) => api.get<Ticket[]>(`/tickets?ticket_number=eq.${number}`),
 }
 
-// Ticket History
-export const ticketHistoryApi = {
-  list: (ticketId: string) => api.get<TicketHistory[]>(`/ticket_history?ticket_id=eq.${ticketId}`),
+// Chat
+export const chatApi = {
+  save: (data: { conversation_id: string; sender_type: string; content: string }) =>
+    api.post('/api/chat/save', data),
 }
 
-// Conversations
-export const conversationsApi = {
-  list: (params?: Record<string, string>) => {
-    const qs = params ? '?' + new URLSearchParams(params).toString() : ''
-    return api.get<Conversation[]>(`/conversations${qs}`)
-  },
-  get: (id: string) => api.get<Conversation>(`/conversations?id=eq.${id}`),
+// Knowledge Base
+export const knowledgeApi = {
+  upload: (formData: FormData) =>
+    fetch(`${BASE_URL}/api/knowledge/upload`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${authToken}`,
+      },
+      body: formData,
+    }).then(r => r.json()),
 }
 
-// Messages
-export const messagesApi = {
-  list: (conversationId: string) =>
-    api.get<Message[]>(`/messages?conversation_id=eq.${conversationId}&order=created_at.asc`),
-  post: (body: Omit<Message, 'id' | 'created_at'>) =>
-    api.post<Message>('/messages', body),
-}
-
-// Knowledge Docs
-export const knowledgeDocsApi = {
-  list: (params?: Record<string, string>) => {
-    const qs = params ? '?' + new URLSearchParams(params).toString() : ''
-    return api.get<KnowledgeDoc[]>(`/knowledge_docs${qs}`)
-  },
-  indexed: () => api.get<KnowledgeDoc[]>(`/knowledge_docs?status=eq.indexed`),
-}
-
-// Daily Stats
-export const dailyStatsApi = {
-  today: () => api.get<DailyStats[]>(`/daily_stats?date=eq.today()`),
-  byDate: (date: string) => api.get<DailyStats>(`/daily_stats?date=eq.${date}`),
-}
-
-// Chatbot Config
-export const chatbotConfigApi = {
-  get: (key: string) => api.get<ChatbotConfig>(`/chatbot_config?key=eq.${key}`),
-  all: () => api.get<ChatbotConfig[]>('/chatbot_config'),
+// WhatsApp
+export const whatsappApi = {
+  getQRStatus: () =>
+    api.get('/api/whatsapp/qr'),
+  setQRCode: (qrCode: string) =>
+    api.post('/api/whatsapp/qr', { qrCode }),
+  getQRImage: () =>
+    `${BASE_URL}/api/whatsapp/qr.png`,
+  receiveMessage: (data: unknown) =>
+    api.post('/api/whatsapp/receive', data),
 }
 
 // Types are imported from types/index.ts
