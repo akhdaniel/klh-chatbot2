@@ -8,6 +8,15 @@ const pg = require('../lib/postgrest');
 const AUTH_TOKEN = process.env.API_TOKEN || process.env.AUTH_TOKEN || null;
 
 /* ── Login (simple token check) ───────────────────────────────── */
+// GET login — inform that POST is required
+router.get('/login', (req, res) => {
+    res.status(405).json({
+        ok: false,
+        error: 'POST method required',
+        message: 'Gunakan method POST dengan body { email, password } untuk login'
+    });
+});
+
 router.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body;
