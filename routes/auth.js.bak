@@ -19,15 +19,17 @@ router.get('/login', (req, res) => {
 
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
-    
-    if (!email || !password) {
-      return res.status(400).json({ ok: false, error: 'email and password required' });
+    let { username, email, password } = req.body;
+  if (!username && email) username = email;
+      console.error("[auth/login] ERROR:", err.message);
+      if (err.config) console.error("[auth/login] REQ:", err.config.method?.toUpperCase(), err.config.url);
+      if (err.response) console.error("[auth/login] RES:", err.response.status, JSON.stringify(err.response.data?.toString().slice(0,500)));
+      return res.status(400).json({ ok: false, error: 'username and password required' });
     }
 
-    // Check users table by email
+    // Check users table
     const users = await pg.list('users', {
-      filters: { email: email },
+      filters: { username: username },
       limit: 1,
     });
 
@@ -37,8 +39,7 @@ router.post('/login', async (req, res) => {
     }
 
     // Simple password check (plain text — upgrade to bcrypt later)
-    // Note: password_hash is empty in current data, checking password directly for now
-    if (user.password_hash && user.password_hash !== password) {
+    if (user.password !== password) {
       return res.status(401).json({ ok: false, error: 'invalid credentials' });
     }
 
@@ -51,18 +52,15 @@ router.post('/login', async (req, res) => {
         token,
         user: {
           id: user.id,
-          email: user.email,
-          name: user.display_name || user.email,
-          role: user.role || 'staff',
+          username: user.username,
+          name: user.name || user.username,
+          role: user.role || 'admin',
         },
       },
     });
   } catch (err) {
-    console.error('[auth/login] ERROR:', err.message);
-    if (err.config) console.error('[auth/login] REQ:', err.config.method?.toUpperCase(), err.config.url);
-    if (err.response) console.error('[auth/login] RES:', err.response.status, JSON.stringify(err.response.data));
-    if (err.request && !err.response) console.error('[auth/login] NO RESPONSE (no network)');
-    res.status(502).json({ ok: false, error: 'Internal server error' });
+    console.error('[auth/login]', err.message);
+    res.status(502).json({ ok: false, error: err.message });
   }
 });
 
@@ -85,9 +83,9 @@ router.get('/me', async (req, res) => {
       ok: true,
       data: {
         id: user.id,
-        email: user.email,
-        name: user.display_name || user.email,
-        role: user.role || 'staff',
+        username: user.username,
+        name: user.name || user.username,
+        role: user.role || 'admin',
       },
     });
   } catch (err) {
