@@ -40,6 +40,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(true)
       const response = await fetch('https://bff.xerpium.com/api/auth/login', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
       })
@@ -73,6 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const response = await fetch('https://bff.xerpium.com/api/auth/signup', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password, display_name: displayName }),
       })

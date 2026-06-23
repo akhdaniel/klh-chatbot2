@@ -14,6 +14,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     }
 
     const res = await fetch(`${BASE_URL}${path}`, {
+      credentials: 'include',
       headers,
       ...options,
     })
@@ -129,6 +130,7 @@ export const knowledgeApi = {
     const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null
     return fetch(`${BASE_URL}/api/knowledge/upload`, {
       method: 'POST',
+      credentials: 'include',
       headers: {
         ...(token && { 'Authorization': `Bearer ${token}` }),
       },
@@ -153,6 +155,7 @@ function del(path: string) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null
   return fetch(`${BASE_URL}${path}`, {
     method: 'DELETE',
+    credentials: 'include',
     headers: { 'Content-Type': 'application/json', ...(token && { Authorization: `Bearer ${token}` }) },
   }).then(r => (r.status === 204 ? {} : r.json()))
 }
