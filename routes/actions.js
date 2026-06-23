@@ -5,27 +5,7 @@
 const express = require('express');
 const router = express.Router();
 const pg = require('../lib/postgrest');
-
-/* ── Keyword rules for ticket classification ──────────────────── */
-const TICKET_KEYWORDS = [
-  // Keluhan / komplain
-  'komplain', 'keluhan', 'kecewa', 'buruk', 'gagal', 'tidak puas',
-  'rusak', 'error', 'masalah', 'salah', 'batal',
-  // Emergency / urgent
-  'urgent', 'darurat', 'mendesak', 'tolong segera', 'cepat',
-  // Teknis
-  'error', 'bug', 'crash', 'not working', 'tidak berfungsi',
-  'server down', 'offline', 'tidak bisa akses',
-  // Layanan
-  'lapor', 'pengaduan', 'tindak lanjut', 'follow up',
-  // Pertanyaan butuh investigasi
-  'kenapa', 'bagaimana cara', 'kapan',
-];
-
-const URGENT_KEYWORDS = [
-  'urgent', 'darurat', 'mendesak', 'sekarang juga', 'critical',
-  'kebakaran', 'kehilangan', 'darurat',
-];
+const ai = require('../lib/ai-classify');
 
 /* ── Classify message → ticket ────────────────────────────────── */
 router.post('/classify-message', async (req, res) => {
@@ -50,34 +30,30 @@ router.post('/classify-message', async (req, res) => {
       return res.status(400).json({ ok: false, error: 'no message content to classify' });
     }
 
-    const lower = content.toLowerCase();
+    // Get customer context for better AI classification
+    const customer = customerId ? await pg.get('customers', customerId) : null;
+    const context = {
+      customer_name: customer?.name || customer?.nama || '',
+      phone: phone || customer?.phone || '',
+    };
 
-    /* ── Classification ────────────────────────────────────── */
-    const isUrgent = URGENT_KEYWORDS.some(k => lower.includes(k));
-    const isTicketWorthy = TICKET_KEYWORDS.some(k => lower.includes(k));
-    const confidence = isUrgent ? 0.9 : isTicketWorthy ? 0.6 : 0.1;
-
-    let classification = 'normal';
-    if (isUrgent) classification = 'urgent';
-    else if (isTicketWorthy) classification = 'needs_ticket';
+    /* ── AI classification ─────────────────────────────────── */
+    const result = await ai.classify(content, context);
+    const classification = result.classification;
+    const confidence = result.confidence;
 
     let ticket = null;
 
     /* ── Auto-create ticket if needed ──────────────────────── */
     if (classification !== 'normal' && customerId) {
-      // Get customer info
-      const customer = await pg.get('customers', customerId);
-
-      // Create ticket
-      const subject = content.length > 100
-        ? content.substring(0, 97) + '...'
-        : content;
+      const subject = result.suggested_subject
+        || (content.length > 100 ? content.substring(0, 97) + '...' : content);
 
       const ticketResult = await pg.insert('tickets', {
         customer_id: customerId,
         subject: subject,
         status: 'open',
-        priority: isUrgent ? 'urgent' : 'medium',
+        priority: classification === 'urgent' ? 'urgent' : 'medium',
         created_at: new Date().toISOString(),
       });
 
@@ -95,7 +71,7 @@ router.post('/classify-message', async (req, res) => {
       await pg.insert('ticket_history', {
         ticket_id: ticket?.id || 0,
         status: 'open',
-        notes: `Ticket auto-created from chat: ${content.substring(0, 200)}`,
+        notes: `AI-classified: ${result.reason || classification}\nMessage: ${content.substring(0, 200)}`,
         created_at: new Date().toISOString(),
       });
     }
@@ -105,9 +81,8 @@ router.post('/classify-message', async (req, res) => {
       classification: {
         label: classification,
         confidence: confidence,
-        urgent: isUrgent,
-        ticket_worthy: isTicketWorthy,
-        matched_keywords: TICKET_KEYWORDS.filter(k => lower.includes(k)),
+        reason: result.reason,
+        source: result.source,
       },
       ticket: ticket || null,
       message_id: msgId,
