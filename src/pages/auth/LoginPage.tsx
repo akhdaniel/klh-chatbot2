@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import SignupPage from './SignupPage';
 
 export default function LoginPage({ onSuccess }: { onSuccess?: () => void }) {
   const { login, loading } = useAuth();
@@ -145,4 +144,162 @@ export default function LoginPage({ onSuccess }: { onSuccess?: () => void }) {
       </div>
     </div>
   );
+}
+
+function SignupPage({ onBackToLogin, onSuccess }: { onBackToLogin: () => void; onSuccess?: () => void }) {
+  const { signup, loading } = useAuth()
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const [displayName, setDisplayName] = useState('')
+  const [error, setError] = useState('')
+  const [validations, setValidations] = useState({ username: '', password: '' })
+
+  const handleValidation = () => {
+    const newValidations = { username: '', password: '' }
+
+    if (username.length > 0 && username.length < 3) {
+      newValidations.username = 'Minimal 3 karakter'
+    }
+    if (password.length > 0 && password.length < 6) {
+      newValidations.password = 'Minimal 6 karakter'
+    }
+
+    setValidations(newValidations)
+    return newValidations.username === '' && newValidations.password === ''
+  }
+
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+
+    if (!handleValidation()) return
+
+    try {
+      await signup(username, password, displayName)
+      onSuccess?.()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Signup gagal')
+    }
+  }
+
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--paper)', padding: '20px' }}>
+      <div style={{ maxWidth: 400, width: '100%', background: 'white', border: '1.5px solid var(--ink)', padding: '40px 32px', boxShadow: '0 20px 50px rgba(13,59,46,0.12)' }}>
+        {/* Header */}
+        <div style={{ marginBottom: 32, textAlign: 'center' }}>
+          <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, letterSpacing: '0.3em', textTransform: 'uppercase', color: 'var(--leaf)', marginBottom: 8 }}>⬢ KLH Admin</div>
+          <h1 style={{ fontFamily: 'Fraunces, serif', fontSize: 28, fontWeight: 500, color: 'var(--leaf-deep)', letterSpacing: '-0.01em' }}>Daftar</h1>
+          <p style={{ fontSize: 13, color: 'var(--bark-soft)', marginTop: 6 }}>Buat akun admin/staff baru</p>
+        </div>
+
+        {/* Error Alert */}
+        {error && (
+          <div style={{ background: '#fee', border: '1px solid #fcc', padding: '12px 14px', borderRadius: 6, fontSize: 12, color: 'var(--clay)', marginBottom: 20 }}>
+            {error}
+          </div>
+        )}
+
+        {/* Form */}
+        <form onSubmit={handleSignup} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--ink)', marginBottom: 6 }}>Username</label>
+            <input
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              onBlur={handleValidation}
+              placeholder="Minimal 3 karakter"
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                fontSize: 14,
+                border: validations.username ? '1px solid var(--clay)' : '1px solid var(--line)',
+                borderRadius: 6,
+                fontFamily: 'inherit',
+              }}
+              required
+            />
+            {validations.username && <p style={{ fontSize: 11, color: 'var(--clay)', marginTop: 4 }}>{validations.username}</p>}
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--ink)', marginBottom: 6 }}>Nama Tampilan</label>
+            <input
+              type="text"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              placeholder="e.g. Siti Rahmawati"
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                fontSize: 14,
+                border: '1px solid var(--line)',
+                borderRadius: 6,
+                fontFamily: 'inherit',
+              }}
+              required
+            />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--ink)', marginBottom: 6 }}>Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              onBlur={handleValidation}
+              placeholder="Minimal 6 karakter"
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                fontSize: 14,
+                border: validations.password ? '1px solid var(--clay)' : '1px solid var(--line)',
+                borderRadius: 6,
+                fontFamily: 'inherit',
+              }}
+              required
+            />
+            {validations.password && <p style={{ fontSize: 11, color: 'var(--clay)', marginTop: 4 }}>{validations.password}</p>}
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              padding: '12px 16px',
+              fontSize: 13,
+              fontWeight: 600,
+              background: 'var(--leaf-deep)',
+              color: 'white',
+              border: 'none',
+              borderRadius: 6,
+              cursor: loading ? 'not-allowed' : 'pointer',
+              opacity: loading ? 0.7 : 1,
+              marginTop: 8,
+            }}
+          >
+            {loading ? 'Loading...' : 'Daftar'}
+          </button>
+        </form>
+
+        {/* Back to Login */}
+        <div style={{ textAlign: 'center', marginTop: 20, paddingTop: 20, borderTop: '1px solid var(--line)' }}>
+          <button
+            onClick={onBackToLogin}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--leaf-deep)',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer',
+              textDecoration: 'underline',
+            }}
+          >
+            ← Kembali ke Login
+          </button>
+        </div>
+      </div>
+    </div>
+  )
 }
