@@ -50,12 +50,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error(error.message || 'Login gagal')
       }
 
-      const data = await response.json()
-      const newToken = data.token
+      const result = await response.json()
+      const newToken = result.data?.token
 
       localStorage.setItem('authToken', newToken)
       setToken(newToken)
-      setUser(data.user || { id: '', username, role: 'staff' })
+      setUser(result.data?.user || { id: '', username, role: 'staff' })
     } catch (err) {
       throw err
     } finally {
@@ -84,12 +84,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error(error.message || 'Signup gagal')
       }
 
-      const data = await response.json()
-      const newToken = data.token
+      const result = await response.json()
+      const newToken = result.data?.token
 
       localStorage.setItem('authToken', newToken)
       setToken(newToken)
-      setUser(data.user)
+      setUser(result.data?.user)
     } catch (err) {
       throw err
     } finally {
