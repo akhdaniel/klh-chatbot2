@@ -44,12 +44,14 @@ const customerRoutes = require('./routes/customers');
 const dashboardRoutes = require('./routes/dashboard');
 const knowledgeRoutes = require('./routes/knowledge');
 const authRoutes = require('./routes/auth');
+const actionRoutes = require('./routes/actions');
 
 app.use('/api/chat', chatRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/knowledge', knowledgeRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/actions', actionRoutes);
 
 /* ── Health check ─────────────────────────────────────────────── */
 
