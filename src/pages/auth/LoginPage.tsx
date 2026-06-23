@@ -19,15 +19,52 @@ export default function LoginPage({ onSuccess }: { onSuccess?: () => void }) {
     setError(null);
     log('▶️ Login clicked');
     log(`Payload: { email: "${username}", password: "****" }`);
-    log('URL: POST https://bff.xerpium.com/api/auth/login');
+
+    const url = 'https://bff.xerpium.com/api/auth/login';
+    log(`URL: POST ${url}`);
+
+    // First, do a raw fetch for full debug logging
+    log('⏳ Sending request...');
     try {
-      log('⏳ Calling AuthContext.login()...');
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email: username, password }),
+      });
+      log(`📡 Response: HTTP ${res.status} ${res.statusText}`);
+
+      // Log response headers (important ones)
+      const ct = res.headers.get('content-type');
+      log(`   Content-Type: ${ct}`);
+
+      // Read response body
+      const bodyText = await res.text();
+      if (bodyText) {
+        try {
+          const json = JSON.parse(bodyText);
+          log(`   Body: ${JSON.stringify(json, null, 2)}`);
+        } catch {
+          log(`   Body: ${bodyText.substring(0, 200)}`);
+        }
+      }
+
+      if (!res.ok) {
+        const errData = bodyText ? JSON.parse(bodyText) : {};
+        const errMsg = errData.error || `HTTP ${res.status}`;
+        log(`❌ Error: ${errMsg}`);
+        setError(errMsg);
+        return;
+      }
+
+      // Response OK — now call context login for state management
+      log('✅ Raw fetch succeeded! Calling AuthContext.login()...');
       await login(username, password);
-      log('✅ Login success!');
+      log('✅ Login complete!');
       onSuccess?.();
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Login gagal';
-      log(`❌ Error: ${msg}`);
+      log(`❌ Fetch failed: ${msg}`);
       setError(msg);
     }
   };
