@@ -1,0 +1,84 @@
+/**
+ * Auth routes — simple token-based authentication for API access
+ */
+const express = require('express');
+const router = express.Router();
+const pg = require('../lib/postgrest');
+
+const AUTH_TOKEN = process.env.API_TOKEN || process.env.AUTH_TOKEN || null;
+
+/* ── Login (simple token check) ───────────────────────────────── */
+router.post('/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ ok: false, error: 'username and password required' });
+    }
+
+    // Check users table
+    const users = await pg.list('users', {
+      filters: { username: username },
+      limit: 1,
+    });
+
+    const user = users[0];
+    if (!user) {
+      return res.status(401).json({ ok: false, error: 'invalid credentials' });
+    }
+
+    // Simple password check (plain text — upgrade to bcrypt later)
+    if (user.password !== password) {
+      return res.status(401).json({ ok: false, error: 'invalid credentials' });
+    }
+
+    // Generate a simple session token
+    const token = Buffer.from(`${user.id}:${Date.now()}`).toString('base64');
+
+    res.json({
+      ok: true,
+      data: {
+        token,
+        user: {
+          id: user.id,
+          username: user.username,
+          name: user.name || user.username,
+          role: user.role || 'admin',
+        },
+      },
+    });
+  } catch (err) {
+    console.error('[auth/login]', err.message);
+    res.status(502).json({ ok: false, error: err.message });
+  }
+});
+
+/* ── Verify token / get current user ──────────────────────────── */
+router.get('/me', async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ ok: false, error: 'unauthorized' });
+  }
+
+  try {
+    const token = authHeader.slice(7);
+    const decoded = Buffer.from(token, 'base64').toString('utf-8');
+    const [userId] = decoded.split(':');
+
+    const user = await pg.get('users', userId);
+    if (!user) return res.status(401).json({ ok: false, error: 'user not found' });
+
+    res.json({
+      ok: true,
+      data: {
+        id: user.id,
+        username: user.username,
+        name: user.name || user.username,
+        role: user.role || 'admin',
+      },
+    });
+  } catch (err) {
+    res.status(401).json({ ok: false, error: 'invalid token' });
+  }
+});
+
+module.exports = router;
