@@ -102,6 +102,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/actions', actionRoutes);
 app.use('/api/tickets', require('./routes/tickets'));
 app.use('/api/minister', require('./routes/minister'));
+app.use('/webhook', require('./routes/webhook'));
 
 /* ── Health check ─────────────────────────────────────────────── */
 
