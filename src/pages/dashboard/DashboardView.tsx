@@ -4,6 +4,7 @@ import { ticketsApi, chatApi } from '../../api/pgrest'
 import Sidebar, { HamburgerButton } from '../../components/Sidebar'
 import TicketList from './TicketList'
 import TicketDetail from './TicketDetail'
+import TicketChatHistory from '../../components/TicketChatHistory'
 import KpiRow from './KpiRow'
 import FilterBar from './FilterBar'
 import UploadModal from './UploadModal'
@@ -254,7 +255,18 @@ export default function DashboardView() {
                 Urut · Terbaru ↓
               </span>
             </div>
-            <TicketList tickets={filtered} selected={selected} onSelect={setSelected} />
+            <TicketList 
+              tickets={filtered} 
+              selected={selected} 
+              onSelect={setSelected}
+              onViewChatHistory={(ticket) => {
+                setChatHistoryModal({
+                  isOpen: true,
+                  ticketId: ticket.id,
+                  ticketNumber: ticket.nomor
+                })
+              }}
+            />
           </div>
           
           {/* Ticket Detail - Full screen on mobile when selected */}
@@ -299,6 +311,14 @@ export default function DashboardView() {
         </div>
       </div>
       {showUpload && <UploadModal onClose={() => setShowUpload(false)} />}
+      
+      {/* Chat History Modal */}
+      <TicketChatHistory
+        ticketId={chatHistoryModal.ticketId || ''}
+        ticketNumber={chatHistoryModal.ticketNumber}
+        isOpen={chatHistoryModal.isOpen}
+        onClose={() => setChatHistoryModal({ isOpen: false, ticketId: null, ticketNumber: '' })}
+      />
     </div>
   )
 }
