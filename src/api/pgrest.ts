@@ -91,15 +91,13 @@ export const ticketsApi = {
 
 // Chat
 export const chatApi = {
-  getHistory: (params: {
-    customer_id?: string | number
-    conversation_id?: string | number
-    limit?: number
-  }) => {
-    const qs = '?' + new URLSearchParams(
-      Object.entries(params).map(([k, v]) => [k, String(v)])
-    ).toString()
-    return api.get<Message[]>(`/api/chat/history${qs}`)
+  getHistory: (conversationId: string | number, limit?: number) => {
+    const qs = limit ? `?limit=${limit}` : ''
+    return api.get<{ ok: boolean; data: Message[] }>(`/api/chat/history/${conversationId}${qs}`)
+  },
+  getConversations: (limit?: number) => {
+    const qs = limit ? `?limit=${limit}` : ''
+    return api.get<{ ok: boolean; data: any[] }>(`/api/chat/conversations${qs}`)
   },
   save: (data: { conversation_id: string; sender_type: string; content: string }) =>
     api.post('/api/chat/save', data),

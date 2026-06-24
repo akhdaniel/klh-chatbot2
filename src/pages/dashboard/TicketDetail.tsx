@@ -1,21 +1,12 @@
-import { useState, useEffect } from 'react'
-import type { UITicket } from '../../types'
+import type { UITicket, Message } from '../../types'
 
-interface Message {
+interface MessageDisplay {
   role: 'bot' | 'customer' | 'staff'
   av: string
   who: string
   when: string
   text: string
 }
-
-const DEFAULT_TRANSCRIPT: Message[] = [
-  { role: 'bot', av: 'AI', who: 'KLH Asisten', when: '09:28', text: 'Selamat pagi 🌱 Saya asisten resmi Kementerian Lingkungan Hidup. Sebelum melanjutkan, boleh saya tahu nama dan kota Anda? <em>(opsional)</em>' },
-  { role: 'customer', av: 'BS', who: 'Pengguna', when: '09:29', text: 'Budi, dari Karawang.' },
-  { role: 'bot', av: 'AI', who: 'KLH Asisten', when: '09:29', text: 'Terima kasih. Apa yang bisa saya bantu hari ini?' },
-  { role: 'customer', av: 'BS', who: 'Pengguna', when: '09:31', text: 'Saya mau lapor. Air Sungai Citarum di belakang rumah saya berubah jadi hitam pekat dan baunya menyengat sejak kemarin sore.' },
-  { role: 'bot', av: 'AI', who: 'KLH Asisten', when: '09:31', text: 'Terima kasih atas laporannya. Ini dicatat sebagai <strong>pengaduan pencemaran air</strong>. Tiket dibuat: <strong>KLH-PCM-2026-0428</strong>' },
-]
 
 const AV_COLORS: Record<string, { bg: string; color: string }> = {
   bot: { bg: 'var(--leaf-deep)', color: 'white' },
@@ -35,69 +26,62 @@ function formatTime(isoString: string): string {
   }
 }
 
-export default function TicketDetail({ ticket }: { ticket: UITicket | null }) {
-  const [messages, setMessages] = useState<Message[]>(DEFAULT_TRANSCRIPT)
-  const [loading, setLoading] = useState(false)
+function formatDate(isoString: string): string {
+  try {
+    const date = new Date(isoString)
+    return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+  } catch {
+    return '—'
+  }
+}
 
-  useEffect(() => {
-    if (!ticket || !ticket.id) {
-      setMessages(DEFAULT_TRANSCRIPT)
-      return
-    }
+interface TicketDetailProps {
+  ticket: UITicket | null
+  conversationHistory?: Message[]
+  historyLoading?: boolean
+  historyError?: string | null
+}
 
-    const loadTicketConversation = async () => {
-      try {
-        setLoading(true)
-        const displayMessages: Message[] = [
-          {
-            role: 'bot',
-            av: 'AI',
-            who: 'KLH Asisten',
-            when: formatTime(ticket.created_at),
-            text: `Tiket <strong>${ticket.nomor}</strong> dibuat. Kategori: <strong>${ticket.kategori}</strong>`,
-          },
-          {
-            role: 'customer',
-            av: 'US',
-            who: ticket.pelapor || 'Pengguna',
-            when: formatTime(ticket.created_at),
-            text: `<strong>${ticket.judul}</strong><br/>${ticket.preview || ''}`,
-          },
-        ]
-
-        // If we have location info, add it
-        if (ticket.lokasi) {
-          displayMessages.push({
-            role: 'customer',
-            av: 'US',
-            who: ticket.pelapor || 'Pengguna',
-            when: formatTime(ticket.created_at),
-            text: `📍 Lokasi: <strong>${ticket.lokasi}</strong>`,
-          })
-        }
-
-        // Add status update
-        displayMessages.push({
-          role: 'bot',
-          av: 'AI',
-          who: 'KLH Asisten',
-          when: formatTime(ticket.updated_at),
-          text: `Status berubah menjadi: <strong>${ticket.status}</strong>`,
-        })
-
-        setMessages(displayMessages)
-      } catch (err) {
-        console.error('Error loading ticket:', err)
-        setMessages(DEFAULT_TRANSCRIPT)
-      } finally {
-        setLoading(false)
+export default function TicketDetail({ 
+  ticket, 
+  conversationHistory = [], 
+  historyLoading = false,
+  historyError = null 
+}: TicketDetailProps) {
+  
+  // Transform API messages to display format
+  const transformMessages = (messages: Message[]): MessageDisplay[] => {
+    return messages.map(msg => {
+      let role: 'bot' | 'customer' | 'staff' = 'customer'
+      let who = 'Pengguna'
+      let av = 'US'
+      
+      if (msg.sender_type === 'bot') {
+        role = 'bot'
+        who = 'KLH Asisten'
+        av = 'AI'
+      } else if (msg.sender_type === 'staff') {
+        role = 'staff'
+        who = 'Staff KLH'
+        av = 'ST'
       }
-    }
+      
+      return {
+        role,
+        av,
+        who,
+        when: formatTime(msg.created_at),
+        text: msg.content
+      }
+    })
+  }
 
-    loadTicketConversation()
-  }, [ticket?.id])
+  const displayMessages = conversationHistory.length > 0 
+    ? transformMessages(conversationHistory)
+    : []
 
   if (!ticket) return null
+  
   return (
     <div style={{ display: 'flex', flexDirection: 'column', background: 'white', overflow: 'hidden' }}>
       {/* Header */}
@@ -135,17 +119,41 @@ export default function TicketDetail({ ticket }: { ticket: UITicket | null }) {
 
       {/* Transcript */}
       <div style={{ flex: 1, padding: '18px 24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 14 }}>
-        {loading && (
+        {historyLoading && (
           <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--bark-soft)', padding: '20px' }}>
+            <div style={{ 
+              display: 'inline-block', 
+              width: 20, 
+              height: 20, 
+              border: '2px solid var(--line)', 
+              borderTop: '2px solid var(--leaf-deep)', 
+              borderRadius: '50%', 
+              animation: 'spin 1s linear infinite',
+              marginRight: 8 
+            }} />
             Loading percakapan...
           </div>
         )}
-        {!loading && messages.length > 0 && (
+        
+        {historyError && (
+          <div style={{ 
+            textAlign: 'center', 
+            fontSize: 12, 
+            color: 'var(--clay)', 
+            padding: '20px',
+            background: '#fee',
+            borderRadius: 6 
+          }}>
+            Error: {historyError}
+          </div>
+        )}
+        
+        {!historyLoading && !historyError && displayMessages.length > 0 && (
           <>
             <div style={{ textAlign: 'center', fontSize: 10.5, color: 'var(--bark-soft)', fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.05em', textTransform: 'uppercase', position: 'relative', margin: '0 0 4px' }}>
-              — Percakapan dimulai · {messages[0]?.when || '—'} —
+              — Percakapan dimulai · {formatDate(conversationHistory[0]?.created_at || ticket.created_at)} —
             </div>
-            {messages.map((m, i) => {
+            {displayMessages.map((m, i) => {
               let msgBg = 'white'
               let msgBorder = 'var(--line-soft)'
               if (m.role === 'bot') {
@@ -177,6 +185,13 @@ export default function TicketDetail({ ticket }: { ticket: UITicket | null }) {
               </div>
             )}
           </>
+        )}
+        
+        {!historyLoading && !historyError && displayMessages.length === 0 && (
+          <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--bark-soft)', padding: '40px 20px' }}>
+            <div style={{ fontSize: 24, marginBottom: 8 }}>💬</div>
+            <div>Belum ada percakapan untuk tiket ini.</div>
+          </div>
         )}
       </div>
     </div>

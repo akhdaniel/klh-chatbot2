@@ -161,6 +161,7 @@ export interface UITicket {
   created_at: string
   updated_at: string
   sla_jam?: number
+  conversation_id?: string | number // ID untuk fetch history dari API
 }
 
 // Summary types for dashboard
