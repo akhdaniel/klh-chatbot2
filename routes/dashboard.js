@@ -1,99 +1,85 @@
 /**
- * Dashboard routes — statistics and overview
+ * Dashboard routes — Dashboard statistics and KPIs
  */
 const express = require('express');
 const router = express.Router();
 const pg = require('../lib/postgrest');
 
-/* ── Main dashboard stats ─────────────────────────────────────── */
-router.get('/stats', async (req, res) => {
+/* ── Get dashboard KPIs ───────────────────────────────────────── */
+router.get('/kpis', async (req, res) => {
   try {
-    const { period = 'today' } = req.query;
-
-    // Total customers count
-    const customerCount = await pg.client.get('/customers?select=count');
-    const totalCustomers = parseInt(customerCount.data?.[0]?.count || 0);
-
-    // Active conversations
-    const activeConvs = await pg.client.get('/conversations?select=count&status=eq.active');
-    const activeConversations = parseInt(activeConvs.data?.[0]?.count || 0);
-
-    // Total messages
-    const msgCount = await pg.client.get('/messages?select=count');
-    const totalMessages = parseInt(msgCount.data?.[0]?.count || 0);
-
-    // Unread messages
-    const unreadMsgs = await pg.client.get('/messages?select=count&is_read=eq.false&sender_type=eq.customer');
-    const unreadMessages = parseInt(unreadMsgs.data?.[0]?.count || 0);
-
-    // Daily stats
-    const today = new Date().toISOString().split('T')[0];
-
-    let dailyStats;
-    try {
-      dailyStats = await pg.list('daily_stats', {
-        select: '*',
-        order: 'date.desc',
-        limit: period === 'today' ? 1 : 30,
-      });
-    } catch {
-      dailyStats = [];
-    }
-
-    // Customers by platform
-    let customersByPlatform;
-    try {
-      customersByPlatform = await pg.client.get('/customers?select=platform,count&group=platform');
-    } catch {
-      customersByPlatform = { data: [] };
-    }
-
-    // Messages in last 7 days
-    let messagesByDay;
-    try {
-      messagesByDay = await pg.list('daily_stats', {
-        select: 'date,total_messages,customer_messages',
-        order: 'date.desc',
-        limit: 7,
-      });
-    } catch {
-      messagesByDay = [];
-    }
-
+    // Get total tickets
+    const tickets = await pg.list('tickets', { limit: 1000 });
+    const totalTickets = tickets.length;
+    
+    // Get tickets by status
+    const openTickets = tickets.filter(t => t.status === 'open').length;
+    const inProgressTickets = tickets.filter(t => t.status === 'in_progress').length;
+    const resolvedTickets = tickets.filter(t => t.status === 'resolved').length;
+    const closedTickets = tickets.filter(t => t.status === 'closed').length;
+    
+    // Get tickets by priority
+    const highPriorityTickets = tickets.filter(t => t.priority === 'high').length;
+    
+    // Get recent tickets (last 7 days)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const recentTickets = tickets.filter(t => {
+      const createdDate = new Date(t.created_at);
+      return createdDate >= sevenDaysAgo;
+    }).length;
+    
+    // Get total customers
+    const customers = await pg.list('users', { limit: 1000 });
+    const totalCustomers = customers.length;
+    
     res.json({
       ok: true,
       data: {
-        totalCustomers,
-        activeConversations,
-        totalMessages,
-        unreadMessages,
-        dailyStats: dailyStats,
-        customersByPlatform: customersByPlatform.data,
-        messagesByDay: messagesByDay.reverse(),
+        tickets: {
+          total: totalTickets,
+          open: openTickets,
+          in_progress: inProgressTickets,
+          resolved: resolvedTickets,
+          closed: closedTickets,
+          high_priority: highPriorityTickets,
+          recent_7d: recentTickets,
+        },
+        customers: {
+          total: totalCustomers,
+        },
       },
     });
   } catch (err) {
-    console.error('[dashboard/stats]', err.message);
+    console.error('[dashboard/kpis]', err.message);
     res.status(502).json({ ok: false, error: err.message });
   }
 });
 
-/* ── Messages volume chart data ───────────────────────────────── */
-router.get('/chart/messages', async (req, res) => {
+/* ── Get recent activity ──────────────────────────────────────── */
+router.get('/activity', async (req, res) => {
   try {
-    const { days = 30 } = req.query;
-
-    const stats = await pg.list('daily_stats', {
-      order: 'date.desc',
-      limit: parseInt(days),
+    const { limit = 10 } = req.query;
+    
+    // Get recent tickets
+    const tickets = await pg.list('tickets', {
+      limit: parseInt(limit),
+      order: 'created_at.desc',
     });
-
+    
     res.json({
       ok: true,
-      data: stats.reverse(),
+      data: tickets.map(t => ({
+        id: t.id,
+        type: 'ticket',
+        subject: t.subject,
+        status: t.status,
+        priority: t.priority,
+        created_at: t.created_at,
+      })),
     });
   } catch (err) {
-    console.error('[dashboard/chart]', err.message);
+    console.error('[dashboard/activity]', err.message);
     res.status(502).json({ ok: false, error: err.message });
   }
 });

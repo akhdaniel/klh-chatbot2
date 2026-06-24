@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 
-export default function LoginPage({ onSuccess }: { onSuccess?: () => void }) {
+export default function LoginPage() {
   const { login, loading } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -61,7 +61,7 @@ export default function LoginPage({ onSuccess }: { onSuccess?: () => void }) {
       log('✅ Raw fetch succeeded! Calling AuthContext.login()...');
       await login(username, password);
       log('✅ Login complete!');
-      onSuccess?.();
+      // ProtectedRoute will handle redirect automatically
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Login gagal';
       log(`❌ Fetch failed: ${msg}`);
@@ -73,19 +73,23 @@ export default function LoginPage({ onSuccess }: { onSuccess?: () => void }) {
     return (
       <SignupPage
         onBackToLogin={() => setShowSignup(false)}
-        onSuccess={onSuccess}
       />
     );
   }
 
+  // Responsive check
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+
   return (
     <div style={{
       minHeight: '100vh', display: 'flex', alignItems: 'center',
-      justifyContent: 'center', background: 'var(--paper)', padding: '20px',
+      justifyContent: 'center', background: 'var(--paper)', 
+      padding: isMobile ? '16px 12px' : '20px',
       fontFamily: "'Fraunces', serif"
     }}>
       <div style={{
-        background: 'var(--paper)', borderRadius: '24px', padding: '40px 32px',
+        background: 'var(--paper)', borderRadius: isMobile ? '16px' : '24px', 
+        padding: isMobile ? '24px 20px' : '40px 32px',
         maxWidth: 400, width: '100%', boxShadow: '0 20px 50px rgba(13,59,46,0.12)'
       }}>
         <div style={{ marginBottom: 32, textAlign: 'center' }}>
@@ -183,7 +187,7 @@ export default function LoginPage({ onSuccess }: { onSuccess?: () => void }) {
   );
 }
 
-function SignupPage({ onBackToLogin, onSuccess }: { onBackToLogin: () => void; onSuccess?: () => void }) {
+function SignupPage({ onBackToLogin }: { onBackToLogin: () => void }) {
   const { signup, loading } = useAuth()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -213,7 +217,7 @@ function SignupPage({ onBackToLogin, onSuccess }: { onBackToLogin: () => void; o
 
     try {
       await signup(username, password, displayName)
-      onSuccess?.()
+      // Signup successful - ProtectedRoute will handle redirect
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Signup gagal')
     }

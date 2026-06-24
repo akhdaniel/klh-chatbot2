@@ -74,3 +74,73 @@ html, body {
 }
 
 .animate-fadeUp { animation: fadeUp 0.4s ease; }
+
+/* Mobile Responsive Styles */
+@media (max-width: 767px) {
+  html, body {
+    font-size: 13px;
+  }
+  
+  /* Cards grid for mobile */
+  .grid-cols-2, .grid-cols-3, .grid-cols-4 {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .grid-cols-2\@mobile {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  
+  /* Mobile typography */
+  .mobile-text-sm { font-size: 12px !important; }
+  .mobile-text-xs { font-size: 10px !important; }
+  
+  /* Mobile spacing */
+  .mobile-p-2 { padding: 8px !important; }
+  .mobile-p-3 { padding: 12px !important; }
+  .mobile-mb-2 { margin-bottom: 8px !important; }
+  
+  /* Mobile tables - horizontal scroll */
+  .mobile-table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Mobile forms */
+  input, select, textarea {
+    font-size: 16px !important; /* Prevents zoom on iOS */
+  }
+  
+  /* Touch-friendly buttons */
+  button, .btn {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Mobile sidebar */
+  .mobile-sidebar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    background: var(--paper);
+    border-top: 1.5px solid var(--ink);
+    padding: 8px 0;
+  }
+  
+  /* Hide scrollbar on mobile but keep functionality */
+  .mobile-no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .mobile-no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+/* Tablet breakpoint */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .tablet-grid-2 {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}

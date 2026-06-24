@@ -25,14 +25,60 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
-  // Load token from localStorage on mount
+  // Verify token and restore session on mount
   useEffect(() => {
-    const savedToken = localStorage.getItem('authToken')
-    if (savedToken) {
-      setToken(savedToken)
-      // In a real app, verify token with backend
+    const verifyToken = async () => {
+      const savedToken = localStorage.getItem('authToken')
+      
+      if (!savedToken) {
+        setLoading(false)
+        return
+      }
+
+      try {
+        // Verify token with backend /api/auth/me endpoint
+        const response = await fetch('https://bff.xerpium.com/api/auth/me', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${savedToken}`,
+            'Content-Type': 'application/json'
+          }
+        })
+
+        if (response.ok) {
+          const result = await response.json()
+          if (result.ok && result.data) {
+            setToken(savedToken)
+            setUser(result.data)
+          } else {
+            // Token invalid or expired
+            localStorage.removeItem('authToken')
+            setToken(null)
+            setUser(null)
+          }
+        } else if (response.status === 401) {
+          // Token expired or invalid
+          localStorage.removeItem('authToken')
+          setToken(null)
+          setUser(null)
+        } else {
+          // Other error, keep token but mark as logged out
+          localStorage.removeItem('authToken')
+          setToken(null)
+          setUser(null)
+        }
+      } catch (err) {
+        console.error('Token verification failed:', err)
+        // Network error - could be temporary, but clear token to be safe
+        localStorage.removeItem('authToken')
+        setToken(null)
+        setUser(null)
+      } finally {
+        setLoading(false)
+      }
     }
-    setLoading(false)
+
+    verifyToken()
   }, [])
 
   const login = async (username: string, password: string) => {
@@ -52,10 +98,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const result = await response.json()
       const newToken = result.data?.token
+      const userData = result.data?.user
+
+      if (!newToken) {
+        throw new Error('Token tidak ditemukan dalam response')
+      }
 
       localStorage.setItem('authToken', newToken)
       setToken(newToken)
-      setUser(result.data?.user || { id: '', username, role: 'staff' })
+      setUser(userData || { id: '', username, role: 'staff' })
     } catch (err) {
       throw err
     } finally {
@@ -86,10 +137,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const result = await response.json()
       const newToken = result.data?.token
+      const userData = result.data?.user
+
+      if (!newToken) {
+        throw new Error('Token tidak ditemukan dalam response')
+      }
 
       localStorage.setItem('authToken', newToken)
       setToken(newToken)
-      setUser(result.data?.user)
+      setUser(userData)
     } catch (err) {
       throw err
     } finally {
@@ -104,7 +160,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoggedIn: !!token, loading, login, signup, logout }}>
+    <AuthContext.Provider value={{ user, token, isLoggedIn: !!token && !!user, loading, login, signup, logout }}>
       {children}
     </AuthContext.Provider>
   )
