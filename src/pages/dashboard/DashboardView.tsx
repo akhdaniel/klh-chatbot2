@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import type { UITicket } from '../../types'
 import { ticketsApi } from '../../api/pgrest'
-import Sidebar from '../../components/Sidebar'
+import Sidebar, { HamburgerButton } from '../../components/Sidebar'
 import TicketList from './TicketList'
 import TicketDetail from './TicketDetail'
 import KpiRow from './KpiRow'
@@ -17,6 +17,22 @@ const FILTERS = [
   { label: 'Hoax', count: 0, value: 'hoax' },
 ]
 
+// Hook untuk cek mobile
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false)
+  
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+  
+  return isMobile
+}
+
 export default function DashboardView() {
   const [selected, setSelected] = useState<UITicket | null>(null)
   const [filter, setFilter] = useState('')
@@ -24,6 +40,8 @@ export default function DashboardView() {
   const [tickets, setTickets] = useState<UITicket[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const isMobile = useIsMobile()
 
   // Fetch from BFF API
   useEffect(() => {
@@ -71,8 +89,16 @@ export default function DashboardView() {
 
   if (loading) {
     return (
-      <div style={{ border: '1.5px solid var(--ink)', overflow: 'hidden', display: 'grid', gridTemplateColumns: '220px 1fr', height: 820, boxShadow: '0 20px 50px rgba(13,59,46,0.12)', background: 'var(--paper)' }}>
-        <Sidebar activeItem="tiket" />
+      <div style={{ 
+        border: '1.5px solid var(--ink)', 
+        overflow: 'hidden', 
+        display: 'grid', 
+        gridTemplateColumns: isMobile ? '1fr' : '220px 1fr', 
+        height: isMobile ? 'calc(100vh - 140px)' : 820, 
+        boxShadow: '0 20px 50px rgba(13,59,46,0.12)', 
+        background: 'var(--paper)' 
+      }}>
+        {!isMobile && <Sidebar activeItem="tiket" />}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, color: 'var(--bark-soft)' }}>
           Loading data dari pgREST...
         </div>
@@ -82,8 +108,16 @@ export default function DashboardView() {
 
   if (error) {
     return (
-      <div style={{ border: '1.5px solid var(--ink)', overflow: 'hidden', display: 'grid', gridTemplateColumns: '220px 1fr', height: 820, boxShadow: '0 20px 50px rgba(13,59,46,0.12)', background: 'var(--paper)' }}>
-        <Sidebar activeItem="tiket" />
+      <div style={{ 
+        border: '1.5px solid var(--ink)', 
+        overflow: 'hidden', 
+        display: 'grid', 
+        gridTemplateColumns: isMobile ? '1fr' : '220px 1fr', 
+        height: isMobile ? 'calc(100vh - 140px)' : 820, 
+        boxShadow: '0 20px 50px rgba(13,59,46,0.12)', 
+        background: 'var(--paper)' 
+      }}>
+        {!isMobile && <Sidebar activeItem="tiket" />}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, color: 'var(--clay)', padding: 20, textAlign: 'center' }}>
           Error: {error}
         </div>
@@ -92,40 +126,138 @@ export default function DashboardView() {
   }
 
   return (
-    <div style={{ border: '1.5px solid var(--ink)', overflow: 'hidden', display: 'grid', gridTemplateColumns: '220px 1fr', height: 820, boxShadow: '0 20px 50px rgba(13,59,46,0.12)', background: 'var(--paper)' }}>
-      <Sidebar activeItem="tiket" />
+    <div style={{ 
+      border: '1.5px solid var(--ink)', 
+      overflow: 'hidden', 
+      display: 'grid', 
+      gridTemplateColumns: isMobile ? '1fr' : '220px 1fr', 
+      height: isMobile ? 'calc(100vh - 140px)' : 820, 
+      boxShadow: '0 20px 50px rgba(13,59,46,0.12)', 
+      background: 'var(--paper)' 
+    }}>
+      {/* Mobile Sidebar with overlay */}
+      <Sidebar 
+        activeItem="tiket" 
+        isOpen={isMobile ? sidebarOpen : undefined}
+        onClose={() => setSidebarOpen(false)}
+      />
+      
       <div style={{ background: 'var(--paper)', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
         {/* Topbar */}
-        <div style={{ padding: '18px 28px', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'white', position: 'sticky', top: 0, zIndex: 5 }}>
-          <div>
-            <h2 style={{ fontFamily: 'Fraunces, serif', fontWeight: 500, fontSize: 22, color: 'var(--leaf-deep)' }}>
-              Tiket Percakapan <em style={{ fontStyle: 'italic', color: 'var(--clay)', fontWeight: 400 }}>· Real-time</em>
-            </h2>
-            <div style={{ fontSize: 12, color: 'var(--bark-soft)', marginTop: 2 }}>
-              Total {tickets.length} tiket · Sinkron aktif dari pgREST
-            </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 14px 6px 6px', border: '1px solid var(--line)', borderRadius: 999 }}>
-            <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'linear-gradient(135deg, var(--leaf-mid), var(--leaf-deep))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 12, fontWeight: 600 }}>SR</div>
+        <div style={{ 
+          padding: isMobile ? '12px 16px' : '18px 28px', 
+          borderBottom: '1px solid var(--line)', 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'space-between', 
+          background: 'white', 
+          position: 'sticky', 
+          top: 0, 
+          zIndex: 5 
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {/* Hamburger button for mobile */}
+            {isMobile && (
+              <HamburgerButton onClick={() => setSidebarOpen(true)} />
+            )}
             <div>
-              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink)' }}>Siti Rahmawati</div>
-              <div style={{ fontSize: 10, color: 'var(--bark-soft)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Admin Humas · Ditjen PPKL</div>
+              <h2 style={{ 
+                fontFamily: 'Fraunces, serif', 
+                fontWeight: 500, 
+                fontSize: isMobile ? 18 : 22, 
+                color: 'var(--leaf-deep)' 
+              }}>
+                Tiket Percakapan <em style={{ fontStyle: 'italic', color: 'var(--clay)', fontWeight: 400 }}>· Real-time</em>
+              </h2>
+              <div style={{ fontSize: isMobile ? 11 : 12, color: 'var(--bark-soft)', marginTop: 2 }}>
+                Total {tickets.length} tiket · Sinkron aktif dari pgREST
+              </div>
             </div>
           </div>
+          
+          {!isMobile && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 14px 6px 6px', border: '1px solid var(--line)', borderRadius: 999 }}>
+              <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'linear-gradient(135deg, var(--leaf-mid), var(--leaf-deep))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 12, fontWeight: 600 }}>SR</div>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink)' }}>Siti Rahmawati</div>
+                <div style={{ fontSize: 10, color: 'var(--bark-soft)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Admin Humas · Ditjen PPKL</div>
+              </div>
+            </div>
+          )}
         </div>
 
         <KpiRow />
         <FilterBar filters={FILTERS} active={filter} onChange={setFilter} onUpload={() => setShowUpload(true)} />
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr', flex: 1, minHeight: 0 }}>
-          <div style={{ borderRight: '1px solid var(--line)', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ padding: '14px 24px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--line-soft)' }}>
-              <span style={{ fontFamily: 'Fraunces, serif', fontSize: 16, fontWeight: 500 }}>Daftar Tiket ({filtered.length})</span>
-              <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: 'var(--bark-soft)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Urut · Terbaru ↓</span>
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: isMobile ? '1fr' : '1.1fr 1fr', 
+          flex: 1, 
+          minHeight: 0 
+        }}>
+          <div style={{ 
+            borderRight: isMobile ? 'none' : '1px solid var(--line)', 
+            display: 'flex', 
+            flexDirection: 'column',
+            borderBottom: isMobile ? '1px solid var(--line)' : 'none'
+          }}>
+            <div style={{ 
+              padding: isMobile ? '12px 16px 8px' : '14px 24px 10px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'space-between', 
+              borderBottom: '1px solid var(--line-soft)' 
+            }}>
+              <span style={{ fontFamily: 'Fraunces, serif', fontSize: isMobile ? 14 : 16, fontWeight: 500 }}>
+                Daftar Tiket ({filtered.length})
+              </span>
+              <span style={{ 
+                fontFamily: 'JetBrains Mono, monospace', 
+                fontSize: isMobile ? 9 : 10, 
+                color: 'var(--bark-soft)', 
+                textTransform: 'uppercase', 
+                letterSpacing: '0.1em' 
+              }}>
+                Urut · Terbaru ↓
+              </span>
             </div>
             <TicketList tickets={filtered} selected={selected} onSelect={setSelected} />
           </div>
-          {selected && <TicketDetail ticket={selected} />}
+          
+          {/* Ticket Detail - Full screen on mobile when selected */}
+          {selected && (
+            <div style={{
+              display: isMobile ? (selected ? 'block' : 'none') : 'block',
+              position: isMobile ? 'fixed' : 'relative',
+              top: isMobile ? 0 : 'auto',
+              left: isMobile ? 0 : 'auto',
+              right: isMobile ? 0 : 'auto',
+              bottom: isMobile ? 0 : 'auto',
+              zIndex: isMobile ? 100 : 'auto',
+              background: 'var(--paper)',
+            }}>
+              {isMobile && (
+                <button 
+                  onClick={() => setSelected(null)}
+                  style={{
+                    position: 'absolute',
+                    top: 10,
+                    left: 10,
+                    zIndex: 101,
+                    background: 'var(--paper)',
+                    border: '1px solid var(--line)',
+                    borderRadius: 6,
+                    padding: '8px 12px',
+                    fontSize: 12,
+                    cursor: 'pointer',
+                  }}
+                >
+                  ← Kembali
+                </button>
+              )}
+              <TicketDetail ticket={selected} />
+            </div>
+          )}
         </div>
       </div>
       {showUpload && <UploadModal onClose={() => setShowUpload(false)} />}
