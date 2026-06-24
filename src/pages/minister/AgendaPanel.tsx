@@ -77,7 +77,10 @@ function AgendaCard({ agenda, canManage, onEdit, onDelete }: {
   onDelete: (id: number) => void
 }) {
   const p = PRIORITY_COLOR[agenda.priority] || PRIORITY_COLOR.low
-  const { day, dow } = fmtDate(agenda.date)
+  
+  // Use pre-formatted date from API if available, otherwise calculate
+  const day = agenda.date_formatted?.day_number ?? fmtDate(agenda.date || agenda.agenda_date || '').day
+  const dow = agenda.date_formatted?.day_name ?? fmtDate(agenda.date || agenda.agenda_date || '').dow
   const cat = CATEGORY_META[agenda.category]
 
   return (
