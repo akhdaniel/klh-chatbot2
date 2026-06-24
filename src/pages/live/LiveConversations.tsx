@@ -42,6 +42,63 @@ export default function LiveConversations() {
   
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
   const isMobile = useIsMobile()
+  const wsRef = useRef<WebSocket | null>(null)
+  
+  // WebSocket connection for real-time updates
+  useEffect(() => {
+    const wsUrl = 'wss://bff.xerpium.com'
+    const ws = new WebSocket(wsUrl)
+    
+    ws.onopen = () => {
+      console.log('[ws] Connected to KLH Chatbot WebSocket')
+    }
+    
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data)
+        console.log('[ws] Received:', data.type)
+        
+        if (data.type === 'new_message') {
+          // If this is for the currently selected conversation, add to messages
+          if (selectedConversation?.id === data.data.conversation_id) {
+            setMessages(prev => [...prev, {
+              id: data.data.message_id,
+              sender_type: data.data.sender_type,
+              content: data.data.message,
+              created_at: data.data.timestamp,
+              conversation_id: data.data.conversation_id
+            } as Message])
+          }
+          
+          // Refresh conversations list to update last_message
+          loadConversations()
+        } else if (data.type === 'conversation_updated') {
+          // Update the conversation in the list
+          setConversations(prev => prev.map(conv => 
+            conv.id === data.data.conversation_id
+              ? { ...conv, last_message: data.data.last_message, last_message_at: data.data.last_message_at }
+              : conv
+          ))
+        }
+      } catch (err) {
+        console.error('[ws] Failed to parse message:', err)
+      }
+    }
+    
+    ws.onerror = (error) => {
+      console.error('[ws] WebSocket error:', error)
+    }
+    
+    ws.onclose = () => {
+      console.log('[ws] Disconnected')
+    }
+    
+    wsRef.current = ws
+    
+    return () => {
+      ws.close()
+    }
+  }, [selectedConversation?.id])
   
   // Load conversations on mount
   useEffect(() => {

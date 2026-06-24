@@ -13,15 +13,63 @@ require('dotenv').config();
 
 const express = require('express');
 const cors = require('cors');
+const WebSocket = require('ws');
+const http = require('http');
 
 const app = express();
 const PORT = process.env.PORT || 4003;
+
+/* ── WebSocket Setup ──────────────────────────────────────────── */
+
+// Store connected clients
+const wss = new WebSocket.Server({ noServer: true });
+const clients = new Set();
+
+wss.on('connection', (ws, req) => {
+  const clientId = `${req.socket.remoteAddress}-${Date.now()}`;
+  console.log(`[ws] Client connected: ${clientId}`);
+  clients.add(ws);
+  
+  ws.on('close', () => {
+    console.log(`[ws] Client disconnected: ${clientId}`);
+    clients.delete(ws);
+  });
+  
+  ws.on('error', (err) => {
+    console.error(`[ws] Error from ${clientId}:`, err.message);
+  });
+  
+  // Send welcome message
+  ws.send(JSON.stringify({ 
+    type: 'connection', 
+    message: 'Connected to KLH Chatbot WebSocket',
+    timestamp: new Date().toISOString()
+  }));
+});
+
+// Broadcast function to send messages to all connected clients
+function broadcast(data) {
+  const message = JSON.stringify(data);
+  let sentCount = 0;
+  
+  clients.forEach((client) => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(message);
+      sentCount++;
+    }
+  });
+  
+  console.log(`[ws] Broadcast to ${sentCount} clients:`, data.type);
+}
+
+// Export broadcast for use in routes
+app.locals.broadcast = broadcast;
 
 /* ── Middleware ────────────────────────────────────────────────── */
 
 app.use(cors({
   origin: process.env.CORS_ORIGIN || '*',
-  methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+ methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 app.use(express.json({ limit: '10mb' }));
@@ -62,6 +110,10 @@ app.get('/health', (req, res) => {
     ok: true,
     status: 'live',
     uptime: process.uptime(),
+    websocket: {
+      connected: clients.size,
+      status: 'active'
+    },
     timestamp: new Date().toISOString(),
   });
 });
@@ -79,12 +131,22 @@ app.use((err, req, res, _next) => {
   res.status(500).json({ ok: false, error: err.message || 'internal server error' });
 });
 
-/* ── Start ────────────────────────────────────────────────────── */
+/* ── Start Server with WebSocket ──────────────────────────────── */
 
-app.listen(PORT, '0.0.0.0', () => {
+const server = http.createServer(app);
+
+// Handle WebSocket upgrade
+server.on('upgrade', (request, socket, head) => {
+  wss.handleUpgrade(request, socket, head, (ws) => {
+    wss.emit('connection', ws, request);
+  });
+});
+
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`[klh-api] Listening on http://0.0.0.0:${PORT}`);
+  console.log(`[klh-api] WebSocket: ws://0.0.0.0:${PORT}`);
   console.log(`[klh-api] PostgREST backend: ${process.env.POSTGREST_URL || 'http://127.0.0.1:4001'}`);
   console.log(`[klh-api] Health: http://0.0.0.0:${PORT}/health`);
 });
 
-module.exports = app;
+module.exports = { app, server, broadcast };

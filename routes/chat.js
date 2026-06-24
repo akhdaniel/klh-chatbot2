@@ -18,6 +18,36 @@ router.post('/save', async (req, res) => {
     }
 
     const result = await pg.saveChat(phone, message, sender_type, platform, name);
+    
+    // Broadcast to all connected WebSocket clients
+    const broadcast = req.app.locals.broadcast;
+    if (broadcast) {
+      broadcast({
+        type: 'new_message',
+        data: {
+          phone,
+          message,
+          sender_type,
+          platform,
+          name,
+          conversation_id: result.conversation_id,
+          message_id: result.message_id,
+          timestamp: new Date().toISOString()
+        }
+      });
+      
+      // Also broadcast conversation update
+      broadcast({
+        type: 'conversation_updated',
+        data: {
+          conversation_id: result.conversation_id,
+          last_message: message,
+          last_message_at: new Date().toISOString(),
+          sender_type
+        }
+      });
+    }
+    
     res.json(result);
   } catch (err) {
     console.error('[chat/save]', err.message);
