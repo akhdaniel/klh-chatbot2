@@ -43,60 +43,122 @@ export default function LiveConversations() {
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
   const isMobile = useIsMobile()
   const wsRef = useRef<WebSocket | null>(null)
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const lastMessageCountRef = useRef<number>(0)
   
-  // WebSocket connection for real-time updates
+  // WebSocket connection for real-time updates with polling fallback
   useEffect(() => {
-    const wsUrl = 'wss://bff.xerpium.com'
-    const ws = new WebSocket(wsUrl)
     
-    ws.onopen = () => {
-      console.log('[ws] Connected to KLH Chatbot WebSocket')
+    // Try WebSocket first
+    const tryWebSocket = () => {
+      const wsUrl = 'wss://bff.xerpium.com'
+      const ws = new WebSocket(wsUrl)
+      
+      ws.onopen = () => {
+        console.log('[ws] Connected to KLH Chatbot WebSocket')
+        // Stop polling if WebSocket connects
+        if (pollingRef.current) {
+          clearInterval(pollingRef.current)
+          pollingRef.current = null
+        }
+      }
+      
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data)
+          console.log('[ws] Received:', data.type)
+          handleRealtimeUpdate(data)
+        } catch (err) {
+          console.error('[ws] Failed to parse message:', err)
+        }
+      }
+      
+      ws.onerror = (error) => {
+        console.error('[ws] WebSocket error:', error)
+      }
+      
+      ws.onclose = () => {
+        console.log('[ws] Disconnected, falling back to polling')
+        startPolling()
+      }
+      
+      wsRef.current = ws
     }
     
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data)
-        console.log('[ws] Received:', data.type)
-        
-        if (data.type === 'new_message') {
-          // If this is for the currently selected conversation, add to messages
-          if (selectedConversation?.id === data.data.conversation_id) {
-            setMessages(prev => [...prev, {
-              id: data.data.message_id,
-              sender_type: data.data.sender_type,
-              content: data.data.message,
-              created_at: data.data.timestamp,
-              conversation_id: data.data.conversation_id
-            } as Message])
+    // Fallback: Polling every 3 seconds
+    const startPolling = () => {
+      if (pollingRef.current) return // Already polling
+      
+      console.log('[poll] Starting polling fallback')
+      pollingRef.current = setInterval(async () => {
+        // Poll for new messages if conversation selected
+        if (selectedConversation) {
+          try {
+            const response = await chatApi.getHistory(selectedConversation.id, 100)
+            if (response.ok && response.data) {
+              const currentCount = response.data.length
+              if (currentCount > lastMessageCountRef.current) {
+                console.log('[poll] New messages detected:', currentCount - lastMessageCountRef.current)
+                setMessages(response.data.reverse())
+                lastMessageCountRef.current = currentCount
+              }
+            }
+          } catch (err) {
+            // Silently ignore polling errors
           }
-          
-          // Refresh conversations list to update last_message
-          loadConversations()
-        } else if (data.type === 'conversation_updated') {
-          // Update the conversation in the list
-          setConversations(prev => prev.map(conv => 
-            conv.id === data.data.conversation_id
-              ? { ...conv, last_message: data.data.last_message, last_message_at: data.data.last_message_at }
-              : conv
-          ))
         }
-      } catch (err) {
-        console.error('[ws] Failed to parse message:', err)
+        
+        // Always poll conversations list
+        try {
+          const response = await chatApi.getConversations(50)
+          if (response.ok && response.data) {
+            setConversations(prev => {
+              // Only update if different
+              const newData = response.data
+              if (JSON.stringify(prev) !== JSON.stringify(newData)) {
+                return newData
+              }
+              return prev
+            })
+          }
+        } catch (err) {
+          // Silently ignore polling errors
+        }
+      }, 3000)
+    }
+    
+    // Handle realtime updates (from WS or polling)
+    const handleRealtimeUpdate = (data: any) => {
+      if (data.type === 'new_message') {
+        if (selectedConversation?.id === data.data.conversation_id) {
+          setMessages(prev => [...prev, {
+            id: data.data.message_id,
+            sender_type: data.data.sender_type,
+            content: data.data.message,
+            created_at: data.data.timestamp,
+            conversation_id: data.data.conversation_id
+          } as Message])
+        }
+        loadConversations()
+      } else if (data.type === 'conversation_updated') {
+        setConversations(prev => prev.map(conv => 
+          conv.id === data.data.conversation_id
+            ? { ...conv, last_message: data.data.last_message, last_message_at: data.data.last_message_at }
+            : conv
+        ))
       }
     }
     
-    ws.onerror = (error) => {
-      console.error('[ws] WebSocket error:', error)
-    }
-    
-    ws.onclose = () => {
-      console.log('[ws] Disconnected')
-    }
-    
-    wsRef.current = ws
+    // Start WebSocket, will fallback to polling if fails
+    tryWebSocket()
+    // Also start polling immediately as backup (will stop if WS connects)
+    startPolling()
     
     return () => {
-      ws.close()
+      wsRef.current?.close()
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current)
+      }
     }
   }, [selectedConversation?.id])
   
@@ -137,6 +199,7 @@ export default function LiveConversations() {
       setMessagesLoading(true)
       const response = await chatApi.getHistory(conversationId, 100)
       if (response.ok && response.data) {
+        lastMessageCountRef.current = response.data.length
         setMessages(response.data)
       }
     } catch (err) {
