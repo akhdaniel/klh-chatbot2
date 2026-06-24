@@ -114,30 +114,36 @@ export default function MapView() {
           </div>
         </div>
 
-        {/* Content Area */}
+        {/* Content Area - 2 DIV TERPISAH: Peta dan Legends */}
         {isMobile ? (
-          /* Mobile: Vertical layout - Map on top, Stats below (scrollable) */
+          /* Mobile: Vertical layout - Map on top, Legends below */
           <div style={{ 
             display: 'flex', 
             flexDirection: 'column',
             flex: 1,
             overflow: 'auto'
           }}>
-            {/* Map on top */}
-            <div style={{ 
-              height: '50vh', 
-              minHeight: 300,
-              flexShrink: 0 
-            }}>
+            {/* DIV 1: PETA (Map) */}
+            <div 
+              id="map-container"
+              style={{ 
+                height: '50vh', 
+                minHeight: 300,
+                flexShrink: 0,
+                borderBottom: '1px solid var(--line)'
+              }}
+            >
               <InteractiveMap tickets={tickets} />
             </div>
             
-            {/* Stats panel below (scrollable) */}
-            <div style={{ 
-              flex: 1,
-              minHeight: 0,
-              borderTop: '1px solid var(--line)'
-            }}>
+            {/* DIV 2: LEGENDS (Stats Panel) */}
+            <div 
+              id="legends-container"
+              style={{ 
+                flex: 1,
+                minHeight: 0
+              }}
+            >
               <StatsPanel tickets={tickets} />
             </div>
           </div>
@@ -150,8 +156,15 @@ export default function MapView() {
             minHeight: 0, 
             overflow: 'hidden' 
           }}>
-            <InteractiveMap tickets={tickets} />
-            <StatsPanel tickets={tickets} />
+            {/* DIV 1: PETA (Map) */}
+            <div id="map-container">
+              <InteractiveMap tickets={tickets} />
+            </div>
+            
+            {/* DIV 2: LEGENDS (Stats Panel) */}
+            <div id="legends-container">
+              <StatsPanel tickets={tickets} />
+            </div>
           </div>
         )}
       </div>
