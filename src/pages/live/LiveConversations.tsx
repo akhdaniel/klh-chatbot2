@@ -99,7 +99,7 @@ export default function LiveConversations() {
               const currentCount = response.data.length
               if (currentCount > lastMessageCountRef.current) {
                 console.log('[poll] New messages detected:', currentCount - lastMessageCountRef.current)
-                setMessages(response.data.reverse())
+                setMessages(response.data)
                 lastMessageCountRef.current = currentCount
               }
             }
@@ -184,7 +184,7 @@ export default function LiveConversations() {
       try {
         const response = await chatApi.getHistory(selectedConversation.id, 100)
         if (response.ok && response.data) {
-          setMessages(response.data.reverse())
+          setMessages(response.data)
         }
       } catch (err) {
         console.error('[poll] Failed to poll messages:', err)
