@@ -534,7 +534,13 @@ export default function LiveConversations() {
       
       {/* Chat Area - Desktop only (mobile shows full screen) */}
       {!isMobile && selectedConversation && (
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ 
+          flex: 1, 
+          display: 'flex', 
+          flexDirection: 'column',
+          minHeight: 0,
+          overflow: 'hidden'
+        }}>
           <ChatView
             conversation={selectedConversation}
             messages={messages}
@@ -633,7 +639,9 @@ function ChatView({
       display: 'flex', 
       flexDirection: 'column', 
       height: '100%',
-      background: 'white'
+      maxHeight: 'calc(100vh - 250px)', // Limit height to viewport
+      background: 'white',
+      overflow: 'hidden' // Prevent outer scroll
     }}>
       {/* Header - Clickable to expand details */}
       <div
@@ -757,12 +765,14 @@ function ChatView({
       {/* Messages */}
       <div style={{
         flex: 1,
-        overflowY: 'auto',
+        overflowY: 'auto', // Only this area scrolls
+        overflowX: 'hidden',
         padding: '16px',
         background: '#f8f9fa',
         display: 'flex',
         flexDirection: 'column',
-        gap: 12
+        gap: 12,
+        minHeight: 0 // Important for flex scroll
       }}>
         {messagesLoading ? (
           <div style={{ textAlign: 'center', padding: 40, color: 'var(--bark-soft)' }}>
