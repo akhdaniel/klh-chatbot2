@@ -174,6 +174,35 @@ export default function LiveConversations() {
     }
   }, [selectedConversation?.id])
   
+  // Polling for new messages when conversation selected
+  useEffect(() => {
+    if (!selectedConversation) return
+    
+    console.log('[poll] Starting messages polling for conversation:', selectedConversation.id)
+    
+    const pollMessages = async () => {
+      try {
+        const response = await chatApi.getHistory(selectedConversation.id, 100)
+        if (response.ok && response.data) {
+          setMessages(response.data.reverse())
+        }
+      } catch (err) {
+        console.error('[poll] Failed to poll messages:', err)
+      }
+    }
+    
+    // Poll immediately
+    pollMessages()
+    
+    // Then poll every 3 seconds
+    const interval = setInterval(pollMessages, 3000)
+    
+    return () => {
+      console.log('[poll] Stopping messages polling')
+      clearInterval(interval)
+    }
+  }, [selectedConversation?.id])
+  
   // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
