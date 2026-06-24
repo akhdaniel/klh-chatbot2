@@ -41,6 +41,7 @@ export default function LiveConversations() {
   const [sending, setSending] = useState(false)
   
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
+  const messagesContainerRef = useRef<HTMLDivElement | null>(null)
   const isMobile = useIsMobile()
   const wsRef = useRef<WebSocket | null>(null)
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -205,7 +206,9 @@ export default function LiveConversations() {
   
   // Scroll to bottom when messages change
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight
+    }
   }, [messages])
   
   const loadConversations = async () => {
@@ -763,17 +766,20 @@ function ChatView({
       )}
       
       {/* Messages */}
-      <div style={{
-        flex: 1,
-        overflowY: 'auto', // Only this area scrolls
-        overflowX: 'hidden',
-        padding: '16px',
-        background: '#f8f9fa',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 12,
-        minHeight: 0 // Important for flex scroll
-      }}>
+      <div 
+        ref={messagesContainerRef}
+        style={{
+          flex: 1,
+          overflowY: 'auto', // Only this area scrolls
+          overflowX: 'hidden',
+          padding: '16px',
+          background: '#f8f9fa',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 12,
+          minHeight: 0 // Important for flex scroll
+        }}
+      >
         {messagesLoading ? (
           <div style={{ textAlign: 'center', padding: 40, color: 'var(--bark-soft)' }}>
             Memuat pesan...
