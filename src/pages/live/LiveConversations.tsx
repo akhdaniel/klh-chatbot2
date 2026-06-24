@@ -267,7 +267,8 @@ export default function LiveConversations() {
     try {
       return new Date(isoString).toLocaleTimeString('id-ID', { 
         hour: '2-digit', 
-        minute: '2-digit' 
+        minute: '2-digit',
+        timeZone: 'Asia/Jakarta'
       })
     } catch {
       return '--:--'
@@ -278,7 +279,9 @@ export default function LiveConversations() {
     try {
       return new Date(isoString).toLocaleDateString('id-ID', {
         day: 'numeric',
-        month: 'short'
+        month: 'short',
+        year: 'numeric',
+        timeZone: 'Asia/Jakarta'
       })
     } catch {
       return ''
