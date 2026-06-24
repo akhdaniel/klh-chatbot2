@@ -174,42 +174,73 @@ router.post('/auto-create', async (req, res) => {
 function classifyMessage(message) {
   const lowerMsg = message.toLowerCase();
   
-  // Check for environmental pollution
-  if (lowerMsg.match(/pencemar|cemar|limbah|sungai.*kotor|air.*hitam|bau/)) {
-    return 'pencemaran';
-  }
+  // ===== CRITICAL / URGENT CASES =====
   
-  // Check for forest fires
-  if (lowerMsg.match(/kebakaran|asap|api|hutan.*terbakar|lahan.*gosong/)) {
+  // Forest fires (Karhutla) - CRITICAL
+  if (lowerMsg.match(/kebakaran.*hutan|karhutla|kebakaran.*lahan|asap.*tebal|api.*besar/)) {
     return 'karhutla';
   }
   
-  // Check for illegal logging
+  // Natural disasters - CRITICAL
+  if (lowerMsg.match(/tanah.*longsor|longsor|banjir.*bandang|tsunami|gempa.*bumi/)) {
+    return 'bencana_alam';
+  }
+  
+  // Severe pollution - HIGH PRIORITY
+  if (lowerMsg.match(/radioaktif|nuklir|kimia.*berbahaya|merkuri|asap.*beracun/)) {
+    return 'pencemaran_berbahaya';
+  }
+  
+  // Flooding - HIGH PRIORITY
+  if (lowerMsg.match(/banjir|genangan|air.*naik|air.*masuk.*rumah/)) {
+    return 'banjir';
+  }
+  
+  // Wildlife hunting/trade - HIGH PRIORITY
+  if (lowerMsg.match(/buru.*satwa|jual.*satwa|perdagangan.*satwa|satwa.*dilindungi/)) {
+    return 'perdagangan_satwa';
+  }
+  
+  // Illegal fishing - HIGH PRIORITY
+  if (lowerMsg.match(/bom.*ikan|bius.*ikan|pukat.*harimau|fishing.*ilegal/)) {
+    return 'penangkapan_ilegal';
+  }
+  
+  // ===== MEDIUM PRIORITY CASES =====
+  
+  // Environmental pollution (general)
+  if (lowerMsg.match(/pencemar|cemar|limbah|sungai.*kotor|air.*hitam|bau.*busuk/)) {
+    return 'pencemaran';
+  }
+  
+  // Illegal logging
   if (lowerMsg.match(/tebang.*liar|illegal.*logging|penebangan.*ilegal/)) {
     return 'penebangan_ilegal';
   }
   
-  // Check for wildlife trade
-  if (lowerMsg.match(/jual.*satwa|perdagangan.*satwa|satwa.*dilindungi/)) {
-    return 'perdagangan_satwa';
-  }
-  
-  // Check for mining
+  // Illegal mining
   if (lowerMsg.match(/tambang.*ilegal|penambangan.*liar/)) {
     return 'tambang_ilegal';
   }
   
-  // Check for flooding
-  if (lowerMsg.match(/banjir|genangan|air.*naik/)) {
-    return 'banjir';
+  // Ecosystem damage
+  if (lowerMsg.match(/terumbu.*karang.*rusak|mangrove.*tebang|hutan.*mangrove/)) {
+    return 'kerusakan_ekosistem';
   }
   
-  // Check for AMDAL/permits
+  // National park damage
+  if (lowerMsg.match(/taman.*nasional.*rusak|tn.*rusak|kawasan.*lindung/)) {
+    return 'kerusakan_tn';
+  }
+  
+  // ===== LOW PRIORITY CASES =====
+  
+  // AMDAL/permits
   if (lowerMsg.match(/amdal|izin|perizinan|dokumen.*lingkungan/)) {
     return 'persuratan';
   }
   
-  // Check for general complaints
+  // General complaints
   if (lowerMsg.match(/lapor|pengaduan|komplain/)) {
     return 'pengaduan';
   }
@@ -221,22 +252,39 @@ function classifyMessage(message) {
 function determinePriority(message, category) {
   const lowerMsg = message.toLowerCase();
   
-  // Critical keywords
-  if (lowerMsg.match(/kebakaran.*hutan|karhutla|kebakaran.*besar/)) {
+  // ===== CRITICAL PRIORITY =====
+  // Life-threatening emergencies
+  if (lowerMsg.match(/kebakaran.*hutan|karhutla|kebakaran.*besar|meninggal.*dunia/)) {
     return 'critical';
   }
   
-  // High priority keywords
-  if (lowerMsg.match(/darurat|segera|cepat|urgent|kritis|banyak.*korban|tenggelam|meninggal/)) {
+  // Natural disasters with casualties
+  if (lowerMsg.match(/tanah.*longsor.*korban|banjir.*bandang.*korban|tsunami/)) {
+    return 'critical';
+  }
+  
+  // Hazardous pollution
+  if (lowerMsg.match(/radioaktif|nuklir|kimia.*berbahaya/)) {
+    return 'critical';
+  }
+  
+  // ===== HIGH PRIORITY =====
+  if (lowerMsg.match(/darurat|segera|cepat|urgent|kritis|banyak.*korban|tenggelam/)) {
     return 'high';
   }
   
-  // Category-based priority
-  if (category === 'karhutla' || category === 'banjir') {
+  // Category-based high priority
+  if (['karhutla', 'bencana_alam', 'banjir', 'pencemaran_berbahaya'].includes(category)) {
     return 'high';
   }
   
-  if (category === 'pencemaran' || category === 'perdagangan_satwa') {
+  if (['perdagangan_satwa', 'penangkapan_ilegal'].includes(category)) {
+    return 'high';
+  }
+  
+  // ===== MEDIUM PRIORITY =====
+  if (['pencemaran', 'penebangan_ilegal', 'tambang_ilegal', 
+        'kerusakan_ekosistem', 'kerusakan_tn'].includes(category)) {
     return 'medium';
   }
   
@@ -246,11 +294,16 @@ function determinePriority(message, category) {
 function generateTicketNumber(category) {
   const prefixes = {
     'pencemaran': 'PCM',
+    'pencemaran_berbahaya': 'PCB',
     'karhutla': 'KHL',
+    'bencana_alam': 'BNA',
     'penebangan_ilegal': 'PLG',
     'perdagangan_satwa': 'KSV',
+    'penangkapan_ilegal': 'PNG',
     'tambang_ilegal': 'TMG',
     'banjir': 'BJR',
+    'kerusakan_ekosistem': 'EKO',
+    'kerusakan_tn': 'KTN',
     'persuratan': 'SRT',
     'pengaduan': 'CRB',
     'umum': 'UMM'
@@ -265,10 +318,37 @@ function generateTicketNumber(category) {
 
 function generateAutoResponse(category, ticketNumber, isUrgent) {
   const responses = {
-    'pencemaran': `Laporan pencemaran lingkungan Anda telah dicatat dengan nomor tiket: *${ticketNumber}*. Tim kami akan segera menindaklanjuti.`,
-    'karhutla': `🚨 LAPORAN DARURAT KEBAKARAN HUTAN 🚨\n\nNomor Tiket: *${ticketNumber}*\n\nTim pemadam akan segera diterjunkan ke lokasi.`,
-    'banjir': `Laporan bencana banjir tercatat dengan nomor tiket: *${ticketNumber}*. Tim SAR akan segera merespons.`,
-    'default': `Terima kasih atas laporannya. Tiket Anda: *${ticketNumber}*. Tim kami akan menindaklanjuti dalam 2x24 jam.`
+    // Critical/Urgent cases
+    'karhutla': `🚨 *LAPORAN DARURAT - KEBAKARAN HUTAN* 🚨\n\n📋 Nomor Tiket: *${ticketNumber}*\n🚨 Prioritas: CRITICAL\n\nTim pemadam kebakaran dan Manggala Agni akan segera diterjunkan ke lokasi. Tetap tenang dan jaga keselamatan.`,
+    
+    'bencana_alam': `🆘 *LAPORAN BENCANA ALAM* 🆘\n\n📋 Nomor Tiket: *${ticketNumber}*\n🚨 Prioritas: HIGH\n\nTim SAR dan relawan akan segera merespons. Pastikan keselamatan diri dan keluarga Anda terlebih dahulu.`,
+    
+    'pencemaran_berbahaya': `☣️ *LAPORAN PENCEMARAN BERBAHAYA* ☣️\n\n📋 Nomor Tiket: *${ticketNumber}*\n🚨 Prioritas: CRITICAL\n\nTim tanggap darurat pencemaran akan segera diturunkan. Jauhi area terdampak dan ikuti arahan petugas.`,
+    
+    'banjir': `🌊 *LAPORAN BENCANA BANJIR* 🌊\n\n📋 Nomor Tiket: *${ticketNumber}*\n🚨 Prioritas: HIGH\n\nTim SAR dan BPBD akan segera merespons. Segera evakuasi ke tempat yang lebih tinggi dan aman.`,
+    
+    // High priority cases
+    'perdagangan_satwa': `🦅 *LAPORAN PERDAGANGAN SATWA LIAR* 🦅\n\n📋 Nomor Tiket: *${ticketNumber}*\n⚠️ Prioritas: HIGH\n\nTim Gakkum akan segera menindaklanjuti. Identitas pelapor dijaga kerahasiaannya.`,
+    
+    'penangkapan_ilegal': `🎣 *LAPORAN PENANGKAPAN IKAN ILEGAL* 🎣\n\n📋 Nomor Tiket: *${ticketNumber}*\n⚠️ Prioritas: HIGH\n\nTim patroli laut akan segera merespons. Terima kasih atas kepedulian terhadap kelautan kita.`,
+    
+    // Medium priority cases
+    'pencemaran': `💧 *LAPORAN PENCEMARAN LINGKUNGAN* 💧\n\n📋 Nomor Tiket: *${ticketNumber}*\n📊 Prioritas: MEDIUM\n\nTim pengawas lingkungan akan menindaklanjuti dalam 2x24 jam. Dokumentasikan dengan foto jika memungkinkan.`,
+    
+    'penebangan_ilegal': `🌲 *LAPORAN PENEBANGAN HUTAN ILEGAL* 🌲\n\n📋 Nomor Tiket: *${ticketNumber}*\n📊 Prioritas: MEDIUM\n\nTim monitoring hutan akan segera mengecek lokasi. Mohon informasi koordinat atau lokasi spesifik.`,
+    
+    'tambang_ilegal': `⛏️ *LAPORAN TAMBANG ILEGAL* ⛏️\n\n📋 Nomor Tiket: *${ticketNumber}*\n📊 Prioritas: MEDIUM\n\nTim pengawas tambang akan segera menindaklanjuti. Pastikan lokasi tambang diluar izin resmi.`,
+    
+    'kerusakan_ekosistem': `🪸 *LAPORAN KERUSAKAN EKOSISTEM* 🪸\n\n📋 Nomor Tiket: *${ticketNumber}*\n📊 Prioritas: MEDIUM\n\nTim ahli ekosistem akan mengevaluasi kerusakan. Terima kasih atas kepedulian terhadap keanekaragaman hayati.`,
+    
+    'kerusakan_tn': `🏞️ *LAPORAN KERUSAKAN TAMAN NASIONAL* 🏞️\n\n📋 Nomor Tiket: *${ticketNumber}*\n📊 Prioritas: MEDIUM\n\nTim Balai Taman Nasional akan segera menindaklanjuti. Kawasan konservasi harus dilindungi.`,
+    
+    // Low priority
+    'persuratan': `📄 *PERMOHONAN INFORMASI* 📄\n\n📋 Nomor Tiket: *${ticketNumber}*\n📊 Prioritas: LOW\n\nTim admin akan merespons dalam 3-5 hari kerja. Silakan cek status secara berkala.`,
+    
+    'pengaduan': `📢 *PENGADUAN UMUM* 📢\n\n📋 Nomor Tiket: *${ticketNumber}*\n📊 Prioritas: LOW\n\nTim customer service akan merespons dalam 2x24 jam. Terima kasih atas masukannya.`,
+    
+    'default': `✅ *LAPORAN DITERIMA* ✅\n\n📋 Nomor Tiket: *${ticketNumber}*\n\nTerima kasih atas laporannya. Tim kami akan menindaklanjuti sesuai prosedur. Pantau status laporan Anda di aplikasi KLH.`
   };
   
   return responses[category] || responses['default'];
