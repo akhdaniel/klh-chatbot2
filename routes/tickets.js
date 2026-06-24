@@ -354,4 +354,43 @@ function generateAutoResponse(category, ticketNumber, isUrgent) {
   return responses[category] || responses['default'];
 }
 
+/* ── Get chat history for a ticket ───────────────────────────── */
+router.get('/:id/chat-history', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { limit = 50 } = req.query;
+
+    // Get ticket to find conversation_id
+    const ticket = await pg.get('tickets', id);
+    if (!ticket) {
+      return res.status(404).json({ ok: false, error: 'Ticket not found' });
+    }
+
+    if (!ticket.conversation_id) {
+      return res.status(404).json({ ok: false, error: 'No conversation linked to this ticket' });
+    }
+
+    // Get messages from conversation
+    const messages = await pg.list('messages', {
+      filters: { conversation_id: ticket.conversation_id },
+      limit: parseInt(limit),
+      order: 'created_at.asc'
+    });
+
+    res.json({
+      ok: true,
+      data: messages,
+      ticket: {
+        id: ticket.id,
+        ticket_number: ticket.ticket_number,
+        conversation_id: ticket.conversation_id
+      }
+    });
+
+  } catch (err) {
+    console.error('[tickets/chat-history]', err.message);
+    res.status(502).json({ ok: false, error: err.message });
+  }
+});
+
 module.exports = router;
