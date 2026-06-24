@@ -147,9 +147,8 @@ export default function DashboardView() {
         <div style={{ 
           padding: isMobile ? '12px 16px' : '18px 28px', 
           borderBottom: '1px solid var(--line)', 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'space-between', 
+          display: 'flex',
+          alignItems: 'center',
           background: 'white', 
           position: 'sticky', 
           top: 0, 
@@ -175,15 +174,7 @@ export default function DashboardView() {
             </div>
           </div>
           
-          {!isMobile && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 14px 6px 6px', border: '1px solid var(--line)', borderRadius: 999 }}>
-              <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'linear-gradient(135deg, var(--leaf-mid), var(--leaf-deep))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 12, fontWeight: 600 }}>SR</div>
-              <div>
-                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink)' }}>Siti Rahmawati</div>
-                <div style={{ fontSize: 10, color: 'var(--bark-soft)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Admin Humas · Ditjen PPKL</div>
-              </div>
-            </div>
-          )}
+
         </div>
 
         <KpiRow />

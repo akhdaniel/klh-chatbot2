@@ -41,19 +41,12 @@ export default function MapView() {
       <Sidebar activeItem="peta" />
       <div style={{ background: 'var(--paper)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         {/* Topbar */}
-        <div style={{ padding: '18px 28px', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'white', flexShrink: 0 }}>
+        <div style={{ padding: '18px 28px', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', background: 'white', flexShrink: 0 }}>
           <div>
             <h2 style={{ fontFamily: 'Fraunces, serif', fontWeight: 500, fontSize: 22, color: 'var(--leaf-deep)' }}>
               Peta Sebaran <em style={{ fontStyle: 'italic', color: 'var(--clay)', fontWeight: 400 }}>· Pengaduan & Pelaporan</em>
             </h2>
             <div style={{ fontSize: 12, color: 'var(--bark-soft)', marginTop: 2 }}>Real-time · {tickets.length} titik aktif · Sinkron dari pgREST</div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 14px 6px 6px', border: '1px solid var(--line)', borderRadius: 999 }}>
-            <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'linear-gradient(135deg, var(--leaf-mid), var(--leaf-deep))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 12, fontWeight: 600 }}>SR</div>
-            <div>
-              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink)' }}>Siti Rahmawati</div>
-              <div style={{ fontSize: 10, color: 'var(--bark-soft)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Admin Humas</div>
-            </div>
           </div>
         </div>
 
