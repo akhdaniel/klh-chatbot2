@@ -4,6 +4,22 @@ import { ministerApi } from '../../api/pgrest'
 import type { MinisterLink, MinisterInvitation, MinisterKpiWeight } from '../../api/pgrest'
 import type { Agenda } from '../../types/agenda'
 
+// Hook untuk cek mobile
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false)
+  
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+  
+  return isMobile
+}
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface AiAnalysis {
@@ -539,6 +555,7 @@ export default function AgendaPanel() {
   const [editingAgenda, setEditingAgenda] = useState<Agenda | undefined>()
   const [saving, setSaving] = useState(false)
   const [showForm, setShowForm] = useState(false)
+  const isMobile = useIsMobile()
 
   const canManage = user?.role === 'admin'
   const agendas = response.data
@@ -586,58 +603,98 @@ export default function AgendaPanel() {
   return (
     <div>
       {/* Week header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+      <div style={{ 
+        display: 'flex', 
+        alignItems: isMobile ? 'flex-start' : 'center', 
+        justifyContent: 'space-between', 
+        marginBottom: 20,
+        flexDirection: isMobile ? 'column' : 'row',
+        gap: isMobile ? 12 : 0
+      }}>
         <div>
-          <h3 style={{ fontFamily: 'Fraunces, serif', fontSize: 22, fontWeight: 500, color: 'var(--ink)', margin: 0 }}>
+          <h3 style={{ fontFamily: 'Fraunces, serif', fontSize: isMobile ? 18 : 22, fontWeight: 500, color: 'var(--ink)', margin: 0 }}>
             Agenda Pekan Ini <em style={{ fontStyle: 'italic', color: 'var(--clay)', fontWeight: 400 }}>· {weekLabel}</em>
           </h3>
           <div style={{ fontSize: 12, color: 'var(--bark-soft)', marginTop: 4 }}>
             {totalIncoming} agenda masuk · {totalScheduled} sudah dijadwalkan
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           {canManage && (
             <button onClick={() => { setEditingAgenda(undefined); setShowForm(true) }}
-              style={{ fontSize: 11, fontWeight: 700, padding: '10px 18px', background: 'var(--leaf-deep)', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-              + Tambah Agenda
+              style={{ fontSize: 11, fontWeight: 700, padding: isMobile ? '8px 12px' : '10px 18px', background: 'var(--leaf-deep)', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+              + {isMobile ? 'Tambah' : 'Tambah Agenda'}
             </button>
           )}
-          <button style={{ fontSize: 11, fontWeight: 700, padding: '10px 18px', background: 'var(--sun)', color: 'var(--ink)', border: 'none', borderRadius: 4, cursor: 'pointer', fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-            ≡ Ajukan Undangan Menteri
+          <button style={{ fontSize: 11, fontWeight: 700, padding: isMobile ? '8px 12px' : '10px 18px', background: 'var(--sun)', color: 'var(--ink)', border: 'none', borderRadius: 4, cursor: 'pointer', fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+            ≡ {isMobile ? 'Ajukan' : 'Ajukan Undangan'}
           </button>
         </div>
       </div>
 
       {error && <div style={{ background: '#fee', color: 'var(--clay)', padding: 12, borderRadius: 6, marginBottom: 16, fontSize: 12 }}>{error}</div>}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 24 }}>
-        {/* Main column */}
-        <div>
-          <AiAnalysisPanel ai={response.ai_analysis} agendas={agendas} />
+      {isMobile ? (
+        /* Mobile: Vertical layout - Agenda on top, sidebar below */
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+          {/* Main column - Agenda on top */}
+          <div>
+            <AiAnalysisPanel ai={response.ai_analysis} agendas={agendas} />
 
-          {agendas.length === 0 ? (
-            <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--bark-soft)', border: '1px dashed var(--line)', borderRadius: 6 }}>
-              Belum ada agenda minggu ini
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {agendas.map(agenda => (
-                <AgendaCard key={agenda.id} agenda={agenda} canManage={canManage}
-                  onEdit={(a) => { setEditingAgenda(a); setShowForm(true) }}
-                  onDelete={handleDelete}
-                />
-              ))}
-            </div>
-          )}
-        </div>
+            {agendas.length === 0 ? (
+              <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--bark-soft)', border: '1px dashed var(--line)', borderRadius: 6 }}>
+                Belum ada agenda minggu ini
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {agendas.map(agenda => (
+                  <AgendaCard key={agenda.id} agenda={agenda} canManage={canManage}
+                    onEdit={(a) => { setEditingAgenda(a); setShowForm(true) }}
+                    onDelete={handleDelete}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
 
-        {/* Right sidebar */}
-        <div>
-          <IncomingPanel initialItems={response.incoming_today} canManage={canManage} />
-          <CategoryStatsPanel counts={stats?.category_counts} agendas={agendas} />
-          <KpiWeightsPanel weights={stats?.kpi_weights} agendas={agendas} canManage={canManage} />
+          {/* Sidebar - Incoming, Categories, KPI Weights on bottom */}
+          <div>
+            <IncomingPanel initialItems={response.incoming_today} canManage={canManage} />
+            <CategoryStatsPanel counts={stats?.category_counts} agendas={agendas} />
+            <KpiWeightsPanel weights={stats?.kpi_weights} agendas={agendas} canManage={canManage} />
+          </div>
         </div>
-      </div>
+      ) : (
+        /* Desktop: Grid layout - Agenda on left, sidebar on right */
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 24 }}>
+          {/* Main column */}
+          <div>
+            <AiAnalysisPanel ai={response.ai_analysis} agendas={agendas} />
+
+            {agendas.length === 0 ? (
+              <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--bark-soft)', border: '1px dashed var(--line)', borderRadius: 6 }}>
+                Belum ada agenda minggu ini
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {agendas.map(agenda => (
+                  <AgendaCard key={agenda.id} agenda={agenda} canManage={canManage}
+                    onEdit={(a) => { setEditingAgenda(a); setShowForm(true) }}
+                    onDelete={handleDelete}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Right sidebar */}
+          <div>
+            <IncomingPanel initialItems={response.incoming_today} canManage={canManage} />
+            <CategoryStatsPanel counts={stats?.category_counts} agendas={agendas} />
+            <KpiWeightsPanel weights={stats?.kpi_weights} agendas={agendas} canManage={canManage} />
+          </div>
+        </div>
+      )}
 
       {/* Full-width bottom: news/press/docs */}
       <NewsLinksSection initialLinks={response.links} canManage={canManage} />
