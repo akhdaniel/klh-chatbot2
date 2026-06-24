@@ -333,6 +333,7 @@ export default function LiveConversations() {
         formatTime={formatTime}
         formatDate={formatDate}
         messagesEndRef={messagesEndRef}
+        messagesContainerRef={messagesContainerRef}
       />
     )
   }
@@ -556,6 +557,7 @@ export default function LiveConversations() {
             formatTime={formatTime}
             formatDate={formatDate}
             messagesEndRef={messagesEndRef}
+            messagesContainerRef={messagesContainerRef}
             isDesktop
           />
         </div>
@@ -594,6 +596,7 @@ interface ChatViewProps {
   formatTime: (iso: string) => string
   formatDate: (iso: string) => string
   messagesEndRef: React.RefObject<HTMLDivElement | null>
+  messagesContainerRef: React.RefObject<HTMLDivElement | null>
   isDesktop?: boolean
 }
 
@@ -609,6 +612,7 @@ function ChatView({
   formatTime,
   formatDate,
   messagesEndRef,
+  messagesContainerRef,
   isDesktop
 }: ChatViewProps) {
   const [showDetails, setShowDetails] = useState(false)
