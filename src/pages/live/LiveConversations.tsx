@@ -573,6 +573,8 @@ function ChatView({
   messagesEndRef,
   isDesktop
 }: ChatViewProps) {
+  const [showDetails, setShowDetails] = useState(false)
+  
   const getBubbleColor = (senderType: string) => {
     switch (senderType) {
       case 'bot': return { bg: '#e8f5f2', border: '#98d4c8', align: 'flex-start' }
@@ -604,15 +606,19 @@ function ChatView({
       height: '100%',
       background: 'white'
     }}>
-      {/* Header */}
-      <div style={{
-        padding: '14px 16px',
-        borderBottom: '1px solid var(--line)',
-        background: 'white',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 12
-      }}>
+      {/* Header - Clickable to expand details */}
+      <div
+        onClick={() => setShowDetails(!showDetails)}
+        style={{
+          padding: '14px 16px',
+          borderBottom: '1px solid var(--line)',
+          background: 'white',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          cursor: 'pointer'
+        }}
+      >
         {!isDesktop && (
           <button
             onClick={onBack}
@@ -674,8 +680,50 @@ function ChatView({
           }}>
             {conversation.category}
           </span>
+          <span style={{
+            fontSize: 14,
+            transform: showDetails ? 'rotate(180deg)' : 'rotate(0deg)',
+            transition: 'transform 0.2s'
+          }}>▼</span>
         </div>
       </div>
+      
+      {/* Expanded Details Panel */}
+      {showDetails && (
+        <div style={{
+          padding: '12px 16px',
+          background: '#f8f9fa',
+          borderBottom: '1px solid var(--line)',
+          fontSize: 12
+        }}>
+          <div style={{ marginBottom: 8 }}>
+            <strong>Phone:</strong> {conversation.phone}
+          </div>
+          <div style={{ marginBottom: 8 }}>
+            <strong>Platform:</strong> {conversation.platform}
+          </div>
+          <div style={{ marginBottom: 8 }}>
+            <strong>Status:</strong> 
+            <span style={{
+              marginLeft: 6,
+              padding: '2px 6px',
+              borderRadius: 3,
+              background: conversation.status === 'active' ? '#dcfce7' : '#f3f4f6',
+              color: conversation.status === 'active' ? '#166534' : '#6b7280',
+              textTransform: 'uppercase',
+              fontWeight: 600
+            }}>
+              {conversation.status}
+            </span>
+          </div>
+          <div style={{ marginBottom: 8 }}>
+            <strong>Priority:</strong> {conversation.priority}
+          </div>
+          <div>
+            <strong>Conversation ID:</strong> #{conversation.id}
+          </div>
+        </div>
+      )}
       
       {/* Messages */}
       <div style={{
