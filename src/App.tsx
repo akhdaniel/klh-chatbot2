@@ -8,6 +8,7 @@ import MobileView from './pages/mobile/MobileView'
 import DashboardView from './pages/dashboard/DashboardView'
 import MapView from './pages/map/MapView'
 import MinisterView from './pages/minister/MinisterView'
+import LiveConversations from './pages/live/LiveConversations'
 
 // Root component that handles auth check
 function App() {
@@ -47,6 +48,7 @@ function AppRoutes() {
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/mobile" element={<MobileView />} />
           <Route path="/dashboard" element={<DashboardView />} />
+          <Route path="/live" element={<LiveConversations />} />
           <Route path="/map" element={<MapView />} />
           <Route path="/minister" element={<MinisterView />} />
         </Route>

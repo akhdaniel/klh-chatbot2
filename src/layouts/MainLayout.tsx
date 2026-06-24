@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 const NAV_ITEMS = [
   { path: '/mobile', label: '📱 Mobile', shortLabel: '📱' },
   { path: '/dashboard', label: '🖥 Dashboard', shortLabel: '🖥' },
+  { path: '/live', label: '💬 Live', shortLabel: '💬' },
   { path: '/map', label: '🗺 Peta', shortLabel: '🗺' },
   { path: '/minister', label: '👔 Menteri', shortLabel: '👔' },
 ]
