@@ -150,7 +150,9 @@ router.post('/auto-create', async (req, res) => {
           message: message.substring(0, 50)
         }
       });
-        ticketData.conversation_id = conversation_id || `wa-${customer_phone}`;
+    }
+
+    res.json({
       ok: true, 
       data: {
         ticket,
