@@ -3,13 +3,7 @@
  */
 import { useState, useEffect } from 'react'
 import { chatApi } from '../api/pgrest'
-
-interface Message {
-  id: number
-  sender_type: string
-  content: string
-  created_at: string
-}
+import type { Message } from '../types'
 
 interface TicketChatHistoryProps {
   senderNo: string

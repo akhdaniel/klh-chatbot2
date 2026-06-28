@@ -15,8 +15,8 @@ const CAT_LABELS: Record<string, string> = {
   hoax: 'Hoax · Humas', edukasi: 'Edukasi · Setjen', konservasi: 'Konservasi · KSDAE', lainnya: 'Lainnya',
 }
 
-export default function TicketList({ tickets, selected, onSelect }: {
-  tickets: UITicket[]; selected: UITicket | null; onSelect: (t: UITicket) => void
+export default function TicketList({ tickets, selected, onSelect, onViewChatHistory }: {
+  tickets: UITicket[]; selected: UITicket | null; onSelect: (t: UITicket) => void; onViewChatHistory?: (t: UITicket) => void
 }) {
   return (
     <div style={{ overflowY: 'auto', flex: 1 }}>
@@ -41,6 +41,12 @@ export default function TicketList({ tickets, selected, onSelect }: {
             {t.pelapor && <><span style={{ color: 'var(--line)' }}>·</span><span>{t.pelapor}</span></>}
             <span style={{ color: 'var(--line)' }}>·</span>
             <span>{timeAgo(t.created_at)}</span>
+            {onViewChatHistory && (
+              <span
+                onClick={(e) => { e.stopPropagation(); onViewChatHistory(t) }}
+                style={{ marginLeft: 'auto', cursor: 'pointer', color: 'var(--leaf-deep)', fontWeight: 600 }}
+              >💬</span>
+            )}
           </div>
         </div>
       ))}

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import type { UITicket, Message } from '../../types'
-import { ticketsApi, chatApi } from '../../api/pgrest'
+import type { UITicket } from '../../types'
+import { ticketsApi } from '../../api/pgrest'
 import Sidebar, { HamburgerButton } from '../../components/Sidebar'
 import TicketList from './TicketList'
 import TicketDetail from './TicketDetail'
@@ -42,11 +42,6 @@ export default function DashboardView() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  
-  // Conversation history states
-  const [conversationHistory, setConversationHistory] = useState<Message[]>([])
-  const [historyLoading, setHistoryLoading] = useState(false)
-  const [historyError, setHistoryError] = useState<string | null>(null)
   const [chatHistoryModal, setChatHistoryModal] = useState<{ isOpen: boolean; senderNo: string | null; ticketNumber: string }>({ isOpen: false, senderNo: null, ticketNumber: '' })
   
   const isMobile = useIsMobile()
@@ -94,42 +89,6 @@ export default function DashboardView() {
     }
     fetchTickets()
   }, [])
-
-  // Fetch conversation history saat ticket dipilih
-  useEffect(() => {
-    if (!selected?.nomor_hp) {
-      setConversationHistory([])
-      return
-    }
-
-    const fetchHistory = async () => {
-      if (!selected.nomor_hp) {
-        setConversationHistory([])
-        return
-      }
-      
-      setHistoryLoading(true)
-      setHistoryError(null)
-      
-      try {
-        const response = await chatApi.getHistory(selected.nomor_hp, 50)
-        if (response.ok && response.data) {
-          setConversationHistory(response.data)
-        } else {
-          setConversationHistory([])
-        }
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : 'Gagal load history'
-        setHistoryError(msg)
-        console.error('History fetch error:', err)
-        setConversationHistory([])
-      } finally {
-        setHistoryLoading(false)
-      }
-    }
-
-    fetchHistory()
-  }, [selected?.nomor_hp])
 
   const filtered = filter ? tickets.filter(t => t.kategori === filter) : tickets
 
@@ -303,9 +262,6 @@ export default function DashboardView() {
               )}
               <TicketDetail 
                 ticket={selected} 
-                conversationHistory={conversationHistory}
-                historyLoading={historyLoading}
-                historyError={historyError}
               />
             </div>
           )}
