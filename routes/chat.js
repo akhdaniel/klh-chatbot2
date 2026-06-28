@@ -78,11 +78,25 @@ router.get('/conversations', async (req, res) => {
   }
 });
 
-/* ── Get message history for a conversation ──────────────────── */
-router.get('/history/:conversationId', async (req, res) => {
+/* ── Get message history by sender phone number ─────────────── */
+router.get('/history/:sender_no', async (req, res) => {
   try {
-    const { conversationId } = req.params;
+    const { sender_no } = req.params;
     const { limit = 100, offset = 0 } = req.query;
+
+    const normalizedPhone = sender_no.startsWith('+') ? sender_no : `+${sender_no}`;
+
+    // Find conversation by phone number
+    const conversations = await pg.list('conversations', {
+      filters: { phone: normalizedPhone },
+      limit: 1,
+    });
+
+    if (!conversations || conversations.length === 0) {
+      return res.json({ ok: true, data: [] });
+    }
+
+    const conversationId = conversations[0].id;
 
     const messages = await pg.list('messages', {
       order: 'created_at.desc',
