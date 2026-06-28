@@ -44,8 +44,11 @@ router.get('/', async (req, res) => {
       });
     }
 
-    const countRes = await pg.client.get('/knowledge_docs?select=count');
-    const total = parseInt(countRes.data?.[0]?.count || 0);
+    const countRes = await pg.client.get('/knowledge_docs', {
+      params: { select: 'id' },
+      headers: { 'Prefer': 'count=exact' },
+    });
+    const total = parseInt(countRes.headers?.['content-range']?.split('/')[1] || '0');
 
     res.json({ ok: true, data: docs, total });
   } catch (err) {
