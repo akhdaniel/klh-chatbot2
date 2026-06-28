@@ -6,6 +6,7 @@ const NAV_ITEMS = [
   { path: '/mobile', label: '📱 Mobile', shortLabel: '📱' },
   { path: '/dashboard', label: '🖥 Dashboard', shortLabel: '🖥' },
   { path: '/live', label: '💬 Live', shortLabel: '💬' },
+  { path: '/knowledge', label: '📂 Sumber Data', shortLabel: '📂' },
   { path: '/map', label: '🗺 Peta', shortLabel: '🗺' },
   { path: '/minister', label: '👔 Menteri', shortLabel: '👔' },
 ]

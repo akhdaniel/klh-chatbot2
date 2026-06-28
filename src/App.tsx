@@ -9,6 +9,7 @@ import DashboardView from './pages/dashboard/DashboardView'
 import MapView from './pages/map/MapView'
 import MinisterView from './pages/minister/MinisterView'
 import LiveConversations from './pages/live/LiveConversations'
+import KnowledgeBase from './pages/knowledge/KnowledgeBase'
 
 // Root component that handles auth check
 function App() {
@@ -51,6 +52,7 @@ function AppRoutes() {
           <Route path="/live" element={<LiveConversations />} />
           <Route path="/map" element={<MapView />} />
           <Route path="/minister" element={<MinisterView />} />
+          <Route path="/knowledge" element={<KnowledgeBase />} />
         </Route>
       </Route>
       

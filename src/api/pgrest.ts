@@ -124,6 +124,12 @@ export const customersApi = {
 
 // Knowledge Base
 export const knowledgeApi = {
+  list: (params?: { category?: string; search?: string; limit?: number; offset?: number }) => {
+    const qs = params ? '?' + new URLSearchParams(
+      Object.entries(params).filter(([, v]) => v !== undefined && v !== '').map(([k, v]) => [k, String(v)])
+    ).toString() : ''
+    return api.get<{ ok: boolean; data: any[]; total: number }>(`/api/knowledge${qs}`)
+  },
   upload: (formData: FormData) => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null
     return fetch(`${BASE_URL}/api/knowledge/upload`, {
@@ -135,6 +141,7 @@ export const knowledgeApi = {
       body: formData,
     }).then(r => r.json())
   },
+  delete: (id: string | number) => del(`/api/knowledge/${id}`),
 }
 
 // WhatsApp
