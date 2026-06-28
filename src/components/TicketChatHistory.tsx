@@ -2,7 +2,7 @@
  * TicketChatHistory - Lazy load chat history for a ticket
  */
 import { useState, useEffect } from 'react'
-import { ticketsApi } from '../api/pgrest'
+import { chatApi } from '../api/pgrest'
 
 interface Message {
   id: number
@@ -12,27 +12,27 @@ interface Message {
 }
 
 interface TicketChatHistoryProps {
-  ticketId: number | string
+  senderNo: string
   ticketNumber: string
   isOpen: boolean
   onClose: () => void
 }
 
-export default function TicketChatHistory({ ticketId, ticketNumber, isOpen, onClose }: TicketChatHistoryProps) {
+export default function TicketChatHistory({ senderNo, ticketNumber, isOpen, onClose }: TicketChatHistoryProps) {
   const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // Lazy load chat history when modal opens
   useEffect(() => {
-    if (!isOpen || !ticketId) return
+    if (!isOpen || !senderNo) return
 
     const loadChatHistory = async () => {
       setLoading(true)
       setError(null)
       
       try {
-        const response = await ticketsApi.getChatHistory(ticketId, 100)
+        const response = await chatApi.getHistory(senderNo, 100)
         if (response.ok && response.data) {
           setMessages(response.data)
         } else {
@@ -47,7 +47,7 @@ export default function TicketChatHistory({ ticketId, ticketNumber, isOpen, onCl
     }
 
     loadChatHistory()
-  }, [isOpen, ticketId])
+  }, [isOpen, senderNo])
 
   if (!isOpen) return null
 

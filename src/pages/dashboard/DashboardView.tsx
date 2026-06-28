@@ -47,6 +47,7 @@ export default function DashboardView() {
   const [conversationHistory, setConversationHistory] = useState<Message[]>([])
   const [historyLoading, setHistoryLoading] = useState(false)
   const [historyError, setHistoryError] = useState<string | null>(null)
+  const [chatHistoryModal, setChatHistoryModal] = useState<{ isOpen: boolean; senderNo: string | null; ticketNumber: string }>({ isOpen: false, senderNo: null, ticketNumber: '' })
   
   const isMobile = useIsMobile()
 
@@ -262,7 +263,7 @@ export default function DashboardView() {
               onViewChatHistory={(ticket) => {
                 setChatHistoryModal({
                   isOpen: true,
-                  ticketId: ticket.id,
+                  senderNo: ticket.nomor_hp || null,
                   ticketNumber: ticket.nomor
                 })
               }}
@@ -314,10 +315,10 @@ export default function DashboardView() {
       
       {/* Chat History Modal */}
       <TicketChatHistory
-        ticketId={chatHistoryModal.ticketId || ''}
+        senderNo={chatHistoryModal.senderNo || ''}
         ticketNumber={chatHistoryModal.ticketNumber}
         isOpen={chatHistoryModal.isOpen}
-        onClose={() => setChatHistoryModal({ isOpen: false, ticketId: null, ticketNumber: '' })}
+        onClose={() => setChatHistoryModal({ isOpen: false, senderNo: null, ticketNumber: '' })}
       />
     </div>
   )

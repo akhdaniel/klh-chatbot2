@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import type { UITicket, Message } from '../../types'
-import { ticketsApi } from '../../api/pgrest'
+import { chatApi } from '../../api/pgrest'
 
 interface TicketDetailProps {
   ticket: UITicket | null
@@ -13,7 +13,7 @@ export default function TicketDetail({ ticket }: TicketDetailProps) {
 
   // Load chat history when ticket is selected
   useEffect(() => {
-    if (!ticket?.id) {
+    if (!ticket?.nomor_hp) {
       setMessages([])
       return
     }
@@ -23,11 +23,11 @@ export default function TicketDetail({ ticket }: TicketDetailProps) {
       setError(null)
       
       try {
-        const response = await ticketsApi.getChatHistory(ticket.id, 100)
+        const response = await chatApi.getHistory(ticket.nomor_hp!, 100)
         if (response.ok && response.data) {
           setMessages(response.data)
         } else {
-          setError(response.error || 'Gagal memuat riwayat chat')
+          setError('Gagal memuat riwayat chat')
         }
       } catch (err) {
         setError('Error loading chat history')
@@ -38,7 +38,7 @@ export default function TicketDetail({ ticket }: TicketDetailProps) {
     }
 
     loadChatHistory()
-  }, [ticket?.id])
+  }, [ticket?.nomor_hp])
 
   if (!ticket) return null
 
