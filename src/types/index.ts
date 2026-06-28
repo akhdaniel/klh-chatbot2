@@ -58,6 +58,8 @@ export interface Ticket {
   status: string
   priority?: TicketPriority
   source?: string
+  reporter_phone?: string
+  reporter_name?: string
   assigned_to?: string | null
   location_lat?: number | null
   location_lng?: number | null

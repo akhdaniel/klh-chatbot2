@@ -95,7 +95,7 @@ export default function LiveConversations() {
         // Poll for new messages if conversation selected
         if (selectedConversation) {
           try {
-            const response = await chatApi.getHistory(selectedConversation.id, 100)
+            const response = await chatApi.getHistory(selectedConversation.phone, 100)
             if (response.ok && response.data) {
               const currentCount = response.data.length
               if (currentCount > lastMessageCountRef.current) {
@@ -171,7 +171,7 @@ export default function LiveConversations() {
   // Load messages when conversation selected
   useEffect(() => {
     if (selectedConversation) {
-      loadMessages(selectedConversation.id)
+      loadMessages(selectedConversation.phone)
     }
   }, [selectedConversation?.id])
   
@@ -183,7 +183,7 @@ export default function LiveConversations() {
     
     const pollMessages = async () => {
       try {
-        const response = await chatApi.getHistory(selectedConversation.id, 100)
+            const response = await chatApi.getHistory(selectedConversation.phone, 100)
         if (response.ok && response.data) {
           setMessages(response.data)
         }
@@ -226,10 +226,10 @@ export default function LiveConversations() {
     }
   }
   
-  const loadMessages = async (conversationId: number) => {
+  const loadMessages = async (senderNo: string) => {
     try {
       setMessagesLoading(true)
-      const response = await chatApi.getHistory(conversationId, 100)
+      const response = await chatApi.getHistory(senderNo, 100)
       if (response.ok && response.data) {
         lastMessageCountRef.current = response.data.length
         setMessages(response.data)
@@ -254,7 +254,7 @@ export default function LiveConversations() {
       })
       setNewMessage('')
       // Reload messages
-      await loadMessages(selectedConversation.id)
+      await loadMessages(selectedConversation.phone)
     } catch (err) {
       console.error('Failed to send message:', err)
       alert('Gagal mengirim pesan')

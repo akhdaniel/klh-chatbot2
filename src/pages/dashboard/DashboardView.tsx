@@ -67,8 +67,8 @@ export default function DashboardView() {
           status: t.status === 'pending' ? 'open' : t.status === 'in_progress' ? 'in_progress' : t.status === 'resolved' ? 'resolved' : 'closed' as any,
           kategori: 'pengaduan' as const,
           unit: 'KLH',
-          pelapor: undefined,
-          nomor_hp: undefined,
+          pelapor: t.reporter_name,
+          nomor_hp: t.reporter_phone,
           lokasi: t.location_name,
           lat: t.location_lat || undefined,
           lng: t.location_lng || undefined,
@@ -96,13 +96,13 @@ export default function DashboardView() {
 
   // Fetch conversation history saat ticket dipilih
   useEffect(() => {
-    if (!selected?.conversation_id) {
+    if (!selected?.nomor_hp) {
       setConversationHistory([])
       return
     }
 
     const fetchHistory = async () => {
-      if (!selected.conversation_id) {
+      if (!selected.nomor_hp) {
         setConversationHistory([])
         return
       }
@@ -111,7 +111,7 @@ export default function DashboardView() {
       setHistoryError(null)
       
       try {
-        const response = await chatApi.getHistory(selected.conversation_id, 50)
+        const response = await chatApi.getHistory(selected.nomor_hp, 50)
         if (response.ok && response.data) {
           setConversationHistory(response.data)
         } else {
@@ -128,7 +128,7 @@ export default function DashboardView() {
     }
 
     fetchHistory()
-  }, [selected?.conversation_id])
+  }, [selected?.nomor_hp])
 
   const filtered = filter ? tickets.filter(t => t.kategori === filter) : tickets
 

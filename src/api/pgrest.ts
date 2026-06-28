@@ -91,9 +91,9 @@ export const ticketsApi = {
 
 // Chat
 export const chatApi = {
-  getHistory: (conversationId: string | number, limit?: number) => {
+  getHistory: (senderNo: string, limit?: number) => {
     const qs = limit ? `?limit=${limit}` : ''
-    return api.get<{ ok: boolean; data: Message[] }>(`/api/chat/history/${conversationId}${qs}`)
+    return api.get<{ ok: boolean; data: Message[] }>(`/api/chat/history/${encodeURIComponent(senderNo)}${qs}`)
   },
   getConversations: (limit?: number) => {
     const qs = limit ? `?limit=${limit}` : ''
