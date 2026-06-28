@@ -111,9 +111,20 @@ router.post('/upload', upload.single('file'), async (req, res) => {
 
     const { title, category } = req.body;
 
+    const doc = await pg.insert('knowledge_docs', {
+      title: title || req.file.originalname,
+      category: category || 'general',
+      filename: req.file.originalname,
+      file_type: path.extname(req.file.originalname).replace('.', ''),
+      file_size: req.file.size,
+      file_path: req.file.path,
+      status: 'processing',
+    });
+
     res.json({
       ok: true,
       data: {
+        id: doc.id,
         filename: req.file.filename,
         originalname: req.file.originalname,
         mimetype: req.file.mimetype,
@@ -121,6 +132,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
         path: req.file.path,
         title: title || req.file.originalname,
         category: category || 'general',
+        status: 'processing',
       },
     });
   } catch (err) {
