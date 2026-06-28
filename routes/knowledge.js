@@ -24,35 +24,19 @@ router.get('/', async (req, res) => {
     const { limit = 50, offset = 0, category, search } = req.query;
     const filters = {};
     if (category) filters.category = category;
+    if (search) filters.or = `(title.il.*${search}*,content.il.*${search}*)`;
 
-    let docs;
-    if (search) {
-      docs = await pg.list('knowledge_docs', {
-        select: '*',
-        order: 'updated_at.desc',
-        limit: parseInt(limit),
-        offset: parseInt(offset),
-        filters: { ...filters, 'or': `(title.il.*${search}*,content.il.*${search}*)` },
-      });
-    } else {
-      docs = await pg.list('knowledge_docs', {
-        select: '*',
-        order: 'updated_at.desc',
-        limit: parseInt(limit),
-        offset: parseInt(offset),
-        filters,
-      });
-    }
-
-    const countRes = await pg.client.get('/knowledge_docs', {
-      params: { select: 'id' },
-      headers: { 'Prefer': 'count=exact' },
+    const docs = await pg.list('knowledge_docs', {
+      select: '*',
+      order: 'updated_at.desc',
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      filters: Object.keys(filters).length > 0 ? filters : undefined,
     });
-    const total = parseInt(countRes.headers?.['content-range']?.split('/')[1] || '0');
 
-    res.json({ ok: true, data: docs, total });
+    res.json({ ok: true, data: docs, total: docs.length });
   } catch (err) {
-    console.error('[knowledge/list]', err.message);
+    console.error('[knowledge/list]', err.message, err.response?.data);
     res.status(502).json({ ok: false, error: err.message });
   }
 });
