@@ -3,7 +3,20 @@
  */
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
+const path = require('path');
 const pg = require('../lib/postgrest');
+
+const upload = multer({
+  dest: '/tmp/klh-uploads',
+  limits: { fileSize: 50 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowed = ['.pdf', '.docx', '.xlsx', '.csv', '.txt'];
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (allowed.includes(ext)) cb(null, true);
+    else cb(new Error(`File type ${ext} not allowed`));
+  },
+});
 
 /* ── List documents ───────────────────────────────────────────── */
 router.get('/', async (req, res) => {
@@ -99,6 +112,33 @@ router.delete('/:id', async (req, res) => {
   } catch (err) {
     console.error('[knowledge/delete]', err.message);
     res.status(502).json({ ok: false, error: err.message });
+  }
+});
+
+/* ── Upload file ─────────────────────────────────────────────── */
+router.post('/upload', upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ ok: false, error: 'No file provided' });
+    }
+
+    const { title, category } = req.body;
+
+    res.json({
+      ok: true,
+      data: {
+        filename: req.file.filename,
+        originalname: req.file.originalname,
+        mimetype: req.file.mimetype,
+        size: req.file.size,
+        path: req.file.path,
+        title: title || req.file.originalname,
+        category: category || 'general',
+      },
+    });
+  } catch (err) {
+    console.error('[knowledge/upload]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
   }
 });
 
