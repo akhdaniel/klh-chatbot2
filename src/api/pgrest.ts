@@ -142,6 +142,15 @@ export const knowledgeApi = {
     }).then(r => r.json())
   },
   delete: (id: string | number) => del(`/api/knowledge/${id}`),
+  search: (query: string, limit?: number, category?: string) =>
+    api.post<{ ok: boolean; results: any[]; total: number }>('/api/knowledge/search', { query, limit, category }),
+  getContext: (category?: string, limit?: number) => {
+    const params = new URLSearchParams()
+    if (category) params.set('category', category)
+    if (limit) params.set('limit', String(limit))
+    const qs = params.toString()
+    return api.get<{ ok: boolean; context: string; doc_count: number }>(`/api/knowledge/context/all${qs ? '?' + qs : ''}`)
+  },
 }
 
 // WhatsApp

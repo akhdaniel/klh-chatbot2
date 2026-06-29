@@ -248,4 +248,122 @@ router.post('/:id/reindex', async (req, res) => {
   }
 });
 
+/* ── Search knowledge (for AI agent) ─────────────────────────── */
+router.post('/search', async (req, res) => {
+  try {
+    const { query, limit = 3, category } = req.body;
+    if (!query) {
+      return res.status(400).json({ ok: false, error: 'query required' });
+    }
+
+    console.log(`[knowledge/search] Query: "${query}"`);
+
+    // Search by title or content (case-insensitive)
+    const searchTerm = query.toLowerCase();
+    
+    // Get all indexed docs and filter (simple approach - can be optimized with FTS)
+    const filters = { status: 'indexed' };
+    if (category) filters.category = category;
+
+    const docs = await pg.list('knowledge_docs', {
+      select: 'id,title,category,content,filename,updated_at',
+      filters,
+      limit: 100, // Get more for client-side ranking
+    });
+
+    // Simple relevance scoring: check if query words appear in title/content
+    const queryWords = searchTerm.split(/\s+/).filter(w => w.length > 2);
+    
+    const scoredDocs = docs.map(doc => {
+      const titleLower = (doc.title || '').toLowerCase();
+      const contentLower = (doc.content || '').toLowerCase();
+      
+      let score = 0;
+      
+      // Title match is weighted higher
+      if (titleLower.includes(searchTerm)) score += 10;
+      
+      // Individual word matches
+      queryWords.forEach(word => {
+        if (titleLower.includes(word)) score += 5;
+        if (contentLower.includes(word)) score += 1;
+      });
+      
+      // Content snippet (first 500 chars around a match, or just beginning)
+      let snippet = '';
+      if (doc.content) {
+        const matchIndex = contentLower.indexOf(searchTerm);
+        if (matchIndex >= 0) {
+          const start = Math.max(0, matchIndex - 100);
+          const end = Math.min(doc.content.length, matchIndex + 400);
+          snippet = doc.content.substring(start, end);
+        } else {
+          snippet = doc.content.substring(0, 500);
+        }
+      }
+      
+      return { ...doc, score, snippet };
+    });
+
+    // Sort by score and take top N
+    const results = scoredDocs
+      .filter(d => d.score > 0 || queryWords.length === 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, parseInt(limit))
+      .map(({ score, snippet, content, ...doc }) => ({ 
+        ...doc, 
+        relevance_score: score,
+        content_preview: snippet 
+      }));
+
+    console.log(`[knowledge/search] Found ${results.length} results`);
+
+    res.json({ 
+      ok: true, 
+      query,
+      results,
+      total: results.length 
+    });
+  } catch (err) {
+    console.error('[knowledge/search]', err.message);
+    res.status(502).json({ ok: false, error: err.message });
+  }
+});
+
+/* ── Get all knowledge as context (for system prompt) ────────── */
+router.get('/context/all', async (req, res) => {
+  try {
+    const { category, limit = 10 } = req.query;
+    
+    const filters = { status: 'indexed' };
+    if (category) filters.category = category;
+
+    const docs = await pg.list('knowledge_docs', {
+      select: 'title,category,content',
+      filters,
+      limit: parseInt(limit),
+      order: 'updated_at.desc',
+    });
+
+    // Format as context string for AI
+    const context = docs.map(doc => {
+      const content = doc.content || '';
+      const preview = content.length > 1000 
+        ? content.substring(0, 1000) + '... [truncated]'
+        : content;
+      return `[${doc.category}] ${doc.title}:\n${preview}`;
+    }).join('\n\n---\n\n');
+
+    res.json({ 
+      ok: true, 
+      context,
+      doc_count: docs.length,
+      sources: docs.map(d => ({ title: d.title, category: d.category }))
+    });
+  } catch (err) {
+    console.error('[knowledge/context]', err.message);
+    res.status(502).json({ ok: false, error: err.message });
+  }
+});
+
 module.exports = router;
