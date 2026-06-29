@@ -27,7 +27,7 @@ router.post('/whatsapp', async (req, res) => {
     // Normalize phone number
     const normalizedPhone = phone.startsWith('+') ? phone : `+${phone}`;
     
-    // Save to database
+    // Save to database (saveChat already inserts to messages via RPC)
     const result = await pg.saveChat(
       normalizedPhone, 
       message, 
@@ -36,20 +36,8 @@ router.post('/whatsapp', async (req, res) => {
       name
     );
     
-    // Also insert into messages table for chat history
-    if (result.conversation_id) {
-      try {
-        await pg.insert('messages', {
-          conversation_id: result.conversation_id,
-          sender_type: sender_type,
-          content: message,
-          created_at: new Date().toISOString()
-        });
-        console.log(`[webhook/whatsapp] Message saved to messages table for conversation ${result.conversation_id}`);
-      } catch (msgErr) {
-        console.error('[webhook/whatsapp] Failed to save message:', msgErr.message);
-      }
-    }
+    // Note: pg.saveChat() calls chat_save RPC which already inserts into messages table
+    // No need to insert again here to avoid duplication
     
     // Broadcast to WebSocket clients
     const broadcast = req.app.locals.broadcast;
@@ -115,27 +103,15 @@ router.post('/bot-response', async (req, res) => {
     const normalizedPhone = phone.startsWith('+') ? phone : `+${phone}`;
     
     const result = await pg.saveChat(
-      normalizedPhone, 
-      message, 
-      'bot', 
-      platform, 
+      normalizedPhone,
+      message,
+      'bot',
+      platform,
       name
     );
-    
-    // Also insert into messages table for chat history
-    if (result.conversation_id) {
-      try {
-        await pg.insert('messages', {
-          conversation_id: result.conversation_id,
-          sender_type: 'bot',
-          content: message,
-          created_at: new Date().toISOString()
-        });
-        console.log(`[webhook/bot] Bot message saved to messages table for conversation ${result.conversation_id}`);
-      } catch (msgErr) {
-        console.error('[webhook/bot] Failed to save message:', msgErr.message);
-      }
-    }
+
+    // Note: pg.saveChat() calls chat_save RPC which already inserts into messages table
+    // No need to insert again here to avoid duplication
     
     // Broadcast
     const broadcast = req.app.locals.broadcast;
