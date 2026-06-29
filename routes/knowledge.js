@@ -7,7 +7,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const pg = require('../lib/postgrest');
-const pdfParse = require('pdf-parse');
+const PDFParser = require('pdf2json');
 const mammoth = require('mammoth');
 
 // Storage config: permanent location
@@ -47,9 +47,47 @@ async function extractText(filePath, fileType) {
     const ext = fileType.toLowerCase();
     
     if (ext === 'pdf') {
-      const buffer = fs.readFileSync(filePath);
-      const data = await pdfParse(buffer);
-      return data.text;
+      return new Promise((resolve, reject) => {
+        const pdfParser = new PDFParser();
+        
+        pdfParser.on('pdfParser_dataError', errData => {
+          console.error('[extractText] PDF parse error:', errData.parserError);
+          resolve('[Error parsing PDF: ' + (errData.parserError?.message || 'Unknown error') + ']');
+        });
+        
+        pdfParser.on('pdfParser_dataReady', pdfData => {
+          try {
+            let text = '';
+            if (pdfData.Pages && pdfData.Pages.length > 0) {
+              for (const page of pdfData.Pages) {
+                if (page.Texts && page.Texts.length > 0) {
+                  for (const textItem of page.Texts) {
+                    if (textItem.R && textItem.R.length > 0) {
+                      for (const r of textItem.R) {
+                        if (r.T) {
+                          // URL decode the text
+                          try {
+                            text += decodeURIComponent(r.T) + ' ';
+                          } catch (e) {
+                            text += r.T + ' ';
+                          }
+                        }
+                      }
+                    }
+                  }
+                  text += '\n';
+                }
+              }
+            }
+            resolve(text.trim() || '[No text content found in PDF]');
+          } catch (err) {
+            console.error('[extractText] Error processing PDF data:', err);
+            resolve('[Error processing PDF: ' + err.message + ']');
+          }
+        });
+        
+        pdfParser.loadPDF(filePath);
+      });
     }
     
     if (ext === 'docx') {
