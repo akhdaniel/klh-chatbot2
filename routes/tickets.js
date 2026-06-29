@@ -43,20 +43,81 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+/* ── Helper: Find or create a conversation by phone ─────────── */
+async function findOrCreateConversation(phone, name, platform = 'whatsapp') {
+  try {
+    if (!phone) return null;
+
+    // Normalize phone: try both with and without + prefix
+    const phoneVariants = [
+      { phone: phone },
+      { phone: phone.replace(/^\+/, '') },
+      { phone: '+' + phone.replace(/^\+/, '') }
+    ];
+
+    let existing = null;
+    for (const filter of phoneVariants) {
+      existing = await pg.list('conversations', {
+        filters: filter,
+        limit: 1
+      });
+      if (existing && existing.length > 0) break;
+    }
+
+    if (existing && existing.length > 0) {
+      return existing[0].id;
+    }
+
+    // Create new conversation
+    const newConv = await pg.insert('conversations', {
+      phone: phone,
+      name: name || phone,
+      platform: platform,
+      status: 'active',
+      category: 'general',
+      priority: 'normal',
+      unread_count: 0,
+      last_message: '',
+      last_message_at: new Date().toISOString()
+    });
+
+    // PostgREST insert may return empty without Prefer header
+    // Try to find the conversation we just created
+    if (!newConv || (Array.isArray(newConv) && newConv.length === 0)) {
+      // Query for the conversation by phone
+      const found = await pg.list('conversations', {
+        filters: { phone: phone },
+        limit: 1,
+        order: 'id.desc'
+      });
+      return found && found.length > 0 ? found[0].id : null;
+    }
+
+    return Array.isArray(newConv) ? newConv[0]?.id : newConv?.id;
+  } catch (err) {
+    console.warn('[tickets/findOrCreateConversation] Error:', err.message);
+    return null;
+  }
+}
+
 /* ── Create ticket ──────────────────────────────────────────── */
 router.post('/', async (req, res) => {
   try {
-    const { subject, description, priority = 'medium', customer_id } = req.body;
+    const { subject, description, priority = 'medium', customer_id, reporter_phone, reporter_name, platform = 'whatsapp' } = req.body;
     
     if (!subject || !description) {
       return res.status(400).json({ ok: false, error: 'Subject and description required' });
     }
+
+    // Find or create conversation
+    const conversationId = await findOrCreateConversation(reporter_phone, reporter_name, platform);
     
     const ticket = await pg.insert('tickets', {
       subject,
       description,
       priority,
       customer_id,
+      conversation_id: conversationId,
       status: 'open',
       created_at: new Date().toISOString(),
     });
@@ -116,6 +177,9 @@ router.post('/auto-create', async (req, res) => {
     // Generate ticket number
     const ticketNumber = generateTicketNumber(category);
 
+    // Find or create conversation for this phone
+    const conversationId = await findOrCreateConversation(phone, name, platform);
+
     // Create ticket
     let ticket;
     try {
@@ -129,6 +193,7 @@ router.post('/auto-create', async (req, res) => {
         source: platform,
         reporter_phone: phone,
         reporter_name: name,
+        conversation_id: conversationId,
         created_at: new Date().toISOString(),
       });
     } catch (insertErr) {
