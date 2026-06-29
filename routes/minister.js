@@ -226,13 +226,17 @@ router.get('/agendas/:id', async (req, res) => {
 router.post('/agendas', async (req, res) => {
   try {
     const { 
-      title, description, agenda_date, agenda_time, location, 
+      title, description, location, 
       status = 'draft', category, attendees, purpose, 
       priority = 'medium', kpi_score, recommended_action, delegation_reason 
     } = req.body;
     
+    // Support both old and new field names for backward compatibility
+    const agenda_date = req.body.agenda_date || req.body.date;
+    const agenda_time = req.body.agenda_time || req.body.time;
+    
     if (!title || !agenda_date) {
-      return res.status(400).json({ ok: false, error: 'Title and agenda_date required' });
+      return res.status(400).json({ ok: false, error: 'Title and agenda_date (or date) required' });
     }
     
     const agenda = await pg.insert('agendas', {
@@ -251,6 +255,8 @@ router.post('/agendas', async (req, res) => {
       delegation_reason,
       created_at: new Date().toISOString(),
     });
+    
+    console.log(`[minister/create] Created agenda: ${title} on ${agenda_date}`);
     
     res.status(201).json({ ok: true, data: agenda });
   } catch (err) {
